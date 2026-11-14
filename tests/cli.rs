@@ -1,7 +1,8 @@
 //! Runs the built `huffman` binary end to end.
 
 use std::fs;
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 const SAMPLE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/samples/lighthouse.txt");
 
@@ -39,8 +40,49 @@ fn encode_decode_inspect_and_errors() {
     assert!(String::from_utf8_lossy(&failed.stderr).contains("bad magic"));
     assert!(!dir.join("out").exists());
 
+    // A damaged container is reported with its block and leaves no output.
+    let mut bytes = fs::read(&packed).unwrap();
+    let middle = bytes.len() / 2;
+    bytes[middle] ^= 0x04;
+    let damaged = path("damaged.huf");
+    fs::write(&damaged, &bytes).unwrap();
+    let failed = run(&["decode", &damaged, &out]);
+    assert_eq!(failed.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("block 1"));
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 3);
+
     assert_eq!(run(&["frobnicate"]).status.code(), Some(2));
     assert!(run(&["--help"]).status.success());
+    assert!(run(&["encode", "--help"]).status.success());
+    assert!(run(&["--version"]).stdout.starts_with(b"huffman "));
+    for shell in ["bash", "zsh", "fish"] {
+        assert!(run(&["completions", shell]).status.success());
+    }
 
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn works_as_a_filter_on_pipes() {
+    let pipe = |args: &[&str], input: &[u8]| {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_huffman"))
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        let input = input.to_vec();
+        let feeder = std::thread::spawn(move || stdin.write_all(&input).unwrap());
+        let output = child.wait_with_output().unwrap();
+        feeder.join().unwrap();
+        assert!(output.status.success());
+        output.stdout
+    };
+    // Larger than one block and larger than a pipe buffer; then the empty input.
+    let big: Vec<u8> = fs::read(SAMPLE).unwrap().repeat(1500);
+    for original in [big.as_slice(), b""] {
+        let packed = pipe(&["encode"], original);
+        assert_eq!(pipe(&["decode", "-", "-"], &packed), original);
+    }
 }
