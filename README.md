@@ -65,8 +65,9 @@ bytes without an error.
 
 **Entropy bound.** For symbol probabilities p, the Shannon entropy
 H = -sum(p * log2(p)) is a lower bound on the average code length of any
-prefix code, and a Huffman code is always within one bit of it:
-H <= average < H + 1. `inspect` prints both numbers. The gap comes from code
+prefix code, and with two or more distinct symbols a Huffman code is within
+one bit of it: H <= average < H + 1. (A single distinct byte has H = 0 but
+still costs one bit per symbol.) `inspect` prints both numbers. The gap comes from code
 lengths being whole bits, and it is largest when one symbol dominates.
 
 ## Run
