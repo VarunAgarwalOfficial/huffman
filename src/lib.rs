@@ -7,12 +7,14 @@
 //! - [`canonical`]: turn lengths into canonical codes and decode them
 //! - [`bits`]: bit-level writer and reader
 //! - [`container`]: the file format, [`encode`] and [`decode`]
+//! - [`report`]: the text view of table, tree and summary used by `inspect`
 
 pub mod bits;
 pub mod canonical;
 pub mod container;
 pub mod error;
 pub mod freq;
+pub mod report;
 pub mod tree;
 
 pub use container::{decode, encode};
