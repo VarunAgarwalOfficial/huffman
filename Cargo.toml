@@ -1,0 +1,12 @@
+[package]
+name = "huffman"
+version = "0.1.0"
+edition = "2021"
+description = "Huffman coding for arbitrary bytes: encoder, decoder and a view of the code tree"
+publish = false
+
+[lib]
+name = "huffman"
+path = "src/lib.rs"
+
+[dependencies]
