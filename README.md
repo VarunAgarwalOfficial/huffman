@@ -6,7 +6,7 @@ table of symbols, the tree, and how close the result is to the entropy bound.
 
 ## The idea
 
-This started as a first-year data structures course project. The lecture
+This started as a data structures course project at university. The lecture
 proved that a greedy rule (always merge the two rarest symbols) gives the
 best possible prefix code, and the project turned that proof into a program
 that actually made a file smaller. It was written twice: first in C, with an
