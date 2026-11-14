@@ -2,11 +2,16 @@
 name = "huffman"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 description = "Huffman coding for arbitrary bytes: encoder, decoder and a view of the code tree"
 publish = false
 
 [lib]
 name = "huffman"
 path = "src/lib.rs"
+
+[[bin]]
+name = "huffman"
+path = "src/main.rs"
 
 [dependencies]

@@ -105,8 +105,8 @@ pub fn render_table(report: &Report) -> String {
     let mut out = String::new();
     let _ = writeln!(
         out,
-        "{:<6} {:>4} {:>10} {:>7} {:>4}  {:<code_width$}",
-        "symbol", "byte", "count", "share", "bits", "code"
+        "{:<6} {:>4} {:>10} {:>7} {:>4}  code",
+        "symbol", "byte", "count", "share", "bits"
     );
     let _ = writeln!(
         out,
