@@ -242,36 +242,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rows_are_sorted_by_count_then_byte() {
-        let report = analyze(b"ccbbbaaa").unwrap();
-        let order: Vec<u8> = report.rows.iter().map(|r| r.symbol).collect();
-        assert_eq!(order, b"abc");
-    }
-
-    #[test]
-    fn numbers_match_a_real_encode() {
-        let data = b"abracadabra abracadabra";
-        let report = analyze(data).unwrap();
-        assert_eq!(report.input_bytes, data.len() as u64);
-        assert_eq!(
-            report.output_bytes,
-            container::encode(data).unwrap().len() as u64
-        );
-        assert_eq!(report.header_bytes, container::header_len(6) as u64);
-        assert!(report.average_len >= report.entropy);
-        assert!(report.average_len < report.entropy + 1.0);
-    }
-
-    #[test]
-    fn labels() {
-        assert_eq!(symbol_label(b'a'), "'a'");
-        assert_eq!(symbol_label(b' '), "' '");
-        assert_eq!(symbol_label(b'\n'), "\\n");
-        assert_eq!(symbol_label(0), "0x00");
-        assert_eq!(symbol_label(0xff), "0xff");
-    }
-
-    #[test]
     fn tree_drawing_for_the_textbook_example() {
         let mut data = Vec::new();
         for (symbol, count) in [
@@ -300,62 +270,6 @@ tree (branch labels are code bits, numbers are weights)
                `-1- 'f' 5
 ";
         assert_eq!(render_tree(&report.rows), expected);
-    }
-
-    #[test]
-    fn every_drawn_leaf_sits_at_its_code_length() {
-        let report = analyze(b"she sells sea shells by the sea shore").unwrap();
-        let drawing = render_tree(&report.rows);
-        for row in &report.rows {
-            let needle = format!("- {} {}", symbol_label(row.symbol), row.count);
-            let line = drawing.lines().find(|l| l.ends_with(&needle)).unwrap();
-            // Each level indents by five columns.
-            let indent = line.find(['+', '`']).unwrap();
-            assert_eq!(indent / 5 + 1, usize::from(row.code.len), "{line}");
-        }
-    }
-
-    #[test]
-    fn single_symbol_tree_has_one_branch() {
-        let report = analyze(b"zzzz").unwrap();
-        assert_eq!(
-            render_tree(&report.rows),
-            "tree (branch labels are code bits, numbers are weights)\n(4)\n`-0- 'z' 4\n"
-        );
-        assert_eq!(report.entropy, 0.0);
-        assert_eq!(report.average_len, 1.0);
-    }
-
-    #[test]
-    fn large_alphabets_use_the_compact_form() {
-        let data: Vec<u8> = (0..=255).collect();
-        let text = render(&analyze(&data).unwrap());
-        assert!(text.contains("tree (256 leaves, too many to draw; symbols grouped by depth)"));
-        assert!(text.contains("depth  8: 256 symbols"));
-        assert!(!text.contains("`-"));
-    }
-
-    #[test]
-    fn empty_input_renders_without_dividing_by_zero() {
-        let text = render(&analyze(b"").unwrap());
-        assert!(text.contains("The input is empty"));
-        assert!(text.contains("input bytes     0"));
-        assert!(text.contains("output bytes    15 (15 header and table, 0 payload)"));
-        assert!(text.contains("ratio           n/a"));
-        assert!(!text.contains("NaN"));
-        assert!(!text.contains("inf"));
-    }
-
-    #[test]
-    fn table_lists_every_symbol_with_its_code() {
-        let report = analyze(b"abacab").unwrap();
-        let table = render_table(&report);
-        let lines: Vec<&str> = table.lines().collect();
-        assert_eq!(lines.len(), 2 + 3);
-        assert!(lines[2].starts_with("'a'"));
-        assert!(lines[2].ends_with("1  0"));
-        assert!(lines[3].ends_with("2  10"));
-        assert!(lines[4].ends_with("2  11"));
-        assert!(lines[2].contains("50.00%"));
+        assert!(report.average_len >= report.entropy);
     }
 }

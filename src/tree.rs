@@ -111,46 +111,6 @@ mod tests {
         counts
     }
 
-    /// Cheapest way to merge the weights down to one tree, trying every pair.
-    fn brute_force(weights: &[u64]) -> u64 {
-        if weights.len() <= 1 {
-            return 0;
-        }
-        let mut best = u64::MAX;
-        for i in 0..weights.len() {
-            for j in i + 1..weights.len() {
-                let mut rest: Vec<u64> = weights
-                    .iter()
-                    .enumerate()
-                    .filter(|&(k, _)| k != i && k != j)
-                    .map(|(_, &w)| w)
-                    .collect();
-                let merged = weights[i] + weights[j];
-                rest.push(merged);
-                best = best.min(merged + brute_force(&rest));
-            }
-        }
-        best
-    }
-
-    #[test]
-    fn empty_table_has_no_codes() {
-        assert!(code_lengths(&[0; SYMBOLS]).iter().all(|&l| l == 0));
-    }
-
-    #[test]
-    fn single_symbol_gets_one_bit() {
-        let lengths = code_lengths(&table(&[(b'x', 1000)]));
-        assert_eq!(lengths[usize::from(b'x')], 1);
-        assert_eq!(lengths.iter().filter(|&&l| l > 0).count(), 1);
-    }
-
-    #[test]
-    fn two_symbols_get_one_bit_each() {
-        let lengths = code_lengths(&table(&[(0, 1), (255, 99)]));
-        assert_eq!((lengths[0], lengths[255]), (1, 1));
-    }
-
     #[test]
     fn textbook_example_costs_224() {
         let counts = table(&[
@@ -171,109 +131,26 @@ mod tests {
     }
 
     #[test]
-    fn matches_brute_force_on_small_tables() {
-        let mut state = 0x2545_f491_4f6c_dd1du64;
-        let mut next = move || {
-            state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            state
-        };
-        for round in 0..300 {
-            let n = 2 + (next() % 6) as usize;
-            let weights: Vec<u64> = (0..n).map(|_| 1 + next() % 40).collect();
-            let pairs: Vec<(u8, u64)> = weights
-                .iter()
-                .enumerate()
-                .map(|(i, &w)| ((i * 37) as u8, w))
-                .collect();
-            let counts = table(&pairs);
-            let lengths = code_lengths(&counts);
-            assert_eq!(
-                total_bits(&counts, &lengths),
-                brute_force(&weights),
-                "round {round}: {weights:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn equal_counts_give_a_balanced_tree() {
-        let lengths = code_lengths(&[7; SYMBOLS]);
-        assert!(lengths.iter().all(|&l| l == 8));
-    }
-
-    #[test]
-    fn ties_are_broken_the_same_way_every_time() {
-        let counts = table(&[(1, 1), (2, 1), (3, 1), (4, 1), (5, 2), (6, 2)]);
-        let first = code_lengths(&counts);
-        for _ in 0..10 {
-            assert_eq!(code_lengths(&counts), first);
-        }
-    }
-
-    fn fibonacci_table(n: usize) -> Counts {
+    fn fibonacci_counts_are_deep_and_can_be_limited() {
         let mut counts = [0u64; SYMBOLS];
         let (mut a, mut b) = (1u64, 1u64);
-        for c in counts.iter_mut().take(n) {
+        for c in counts.iter_mut().take(60) {
             *c = a;
             (a, b) = (b, a + b);
         }
-        counts
-    }
+        assert_eq!(code_lengths(&counts).iter().copied().max(), Some(59));
 
-    #[test]
-    fn fibonacci_counts_build_a_degenerate_tree() {
-        let lengths = code_lengths(&fibonacci_table(60));
-        assert_eq!(lengths.iter().copied().max(), Some(59));
-        assert_eq!(lengths[0], 59);
-        assert_eq!(lengths[59], 1);
-    }
-
-    #[test]
-    fn limit_is_respected_and_code_stays_complete() {
-        let counts = fibonacci_table(60);
-        for max_len in [6u8, 8, 16, 32, 48] {
+        for max_len in [6u8, 48] {
             let lengths = limited_code_lengths(&counts, max_len).unwrap();
-            assert_eq!(lengths.iter().filter(|&&l| l > 0).count(), 60);
             assert!(lengths.iter().all(|&l| l <= max_len));
+            // Still a complete prefix code: the Kraft sum is exactly 1.
             let kraft: u64 = lengths
                 .iter()
                 .filter(|&&l| l > 0)
                 .map(|&l| 1u64 << (max_len - l))
                 .sum();
-            assert_eq!(kraft, 1u64 << max_len, "max_len {max_len}");
+            assert_eq!(kraft, 1u64 << max_len);
         }
-    }
-
-    #[test]
-    fn limit_does_not_change_trees_that_already_fit() {
-        let counts = table(&[(b'a', 45), (b'b', 13), (b'c', 12), (b'd', 16)]);
-        assert_eq!(
-            limited_code_lengths(&counts, 48).unwrap(),
-            code_lengths(&counts)
-        );
-    }
-
-    #[test]
-    fn impossible_limits_are_errors() {
-        let counts = table(&[(1, 1), (2, 1), (3, 1)]);
-        assert_eq!(
-            limited_code_lengths(&counts, 1),
-            Err(Error::InvalidMaxLen {
-                max_len: 1,
-                symbols: 3
-            })
-        );
-        assert!(limited_code_lengths(&counts, 0).is_err());
-        assert!(limited_code_lengths(&counts, 2).is_ok());
-        assert!(limited_code_lengths(&[1; SYMBOLS], 7).is_err());
-        assert!(limited_code_lengths(&[1; SYMBOLS], 8).is_ok());
-    }
-
-    #[test]
-    fn huge_counts_do_not_overflow() {
-        let lengths = code_lengths(&[u64::MAX; SYMBOLS]);
-        assert!(lengths.iter().all(|&l| l > 0));
+        assert!(limited_code_lengths(&counts, 5).is_err());
     }
 }

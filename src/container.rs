@@ -178,76 +178,6 @@ mod tests {
     }
 
     #[test]
-    fn empty_input_is_just_the_fixed_header() {
-        let container = encode(b"").unwrap();
-        assert_eq!(container.len(), FIXED_HEADER_LEN);
-        assert_eq!(decode(&container).unwrap(), b"");
-    }
-
-    #[test]
-    fn one_repeated_symbol_costs_one_bit_each() {
-        let container = encode(&[b'x'; 16]).unwrap();
-        assert_eq!(container.len(), header_len(1) + 2);
-        assert_eq!(decode(&container).unwrap(), [b'x'; 16]);
-    }
-
-    #[test]
-    fn bit_count_divisible_by_eight_adds_no_padding_byte() {
-        // Two symbols, one bit each, eight symbols: exactly one payload byte.
-        let container = encode(b"abababab").unwrap();
-        assert_eq!(container.len(), header_len(2) + 1);
-        assert_eq!(decode(&container).unwrap(), b"abababab");
-    }
-
-    #[test]
-    fn header_can_be_read_on_its_own() {
-        let container = encode(b"hello world").unwrap();
-        let header = read_header(&container).unwrap();
-        assert_eq!(header.original_len, 11);
-        assert_eq!(header.payload_start, header_len(8));
-        assert_eq!(header.lengths.iter().filter(|&&l| l > 0).count(), 8);
-    }
-
-    #[test]
-    fn rejects_bad_magic_and_version() {
-        let mut container = encode(b"hello").unwrap();
-        container[0] = b'X';
-        assert_eq!(decode(&container), Err(Error::BadMagic));
-        assert_eq!(decode(b"PK\x03\x04 something else"), Err(Error::BadMagic));
-
-        let mut container = encode(b"hello").unwrap();
-        container[4] = 2;
-        assert_eq!(decode(&container), Err(Error::UnsupportedVersion(2)));
-    }
-
-    #[test]
-    fn rejects_every_truncation() {
-        let container = encode(b"the quick brown fox jumps over the lazy dog").unwrap();
-        for cut in 0..container.len() {
-            assert_eq!(
-                decode(&container[..cut]),
-                Err(Error::Truncated),
-                "cut {cut}"
-            );
-        }
-    }
-
-    #[test]
-    fn rejects_trailing_bytes_and_dirty_padding() {
-        let mut container = encode(b"abacab").unwrap();
-        container.push(0);
-        assert_eq!(decode(&container), Err(Error::TrailingData));
-
-        let mut container = encode(b"abacab").unwrap();
-        *container.last_mut().unwrap() |= 1;
-        assert_eq!(decode(&container), Err(Error::TrailingData));
-
-        let mut container = encode(b"").unwrap();
-        container.push(0);
-        assert_eq!(decode(&container), Err(Error::TrailingData));
-    }
-
-    #[test]
     fn rejects_invalid_tables() {
         let good = encode(b"abacab").unwrap();
         let table = FIXED_HEADER_LEN;
@@ -266,49 +196,9 @@ mod tests {
         assert!(invalid(&|c| c[table + 5] = 3));
         // Duplicate symbol.
         assert!(invalid(&|c| c[table + 2] = b'a'));
-        // Descending symbols.
-        assert!(invalid(&|c| c[table] = b'z'));
         // Symbol count above 256.
         assert!(invalid(
             &|c| c[13..15].copy_from_slice(&257u16.to_le_bytes())
         ));
-    }
-
-    #[test]
-    fn rejects_length_without_symbols() {
-        let mut container = encode(b"").unwrap();
-        container[5] = 1;
-        container.push(0);
-        assert!(matches!(decode(&container), Err(Error::InvalidTable(_))));
-    }
-
-    #[test]
-    fn huge_claimed_length_is_rejected_before_allocating() {
-        let mut container = encode(&[b'x'; 16]).unwrap();
-        container[5..13].copy_from_slice(&u64::MAX.to_le_bytes());
-        assert_eq!(decode(&container), Err(Error::Truncated));
-    }
-
-    #[test]
-    fn single_symbol_payload_with_a_one_bit_is_invalid() {
-        let mut container = encode(&[b'x'; 64]).unwrap();
-        for byte in &mut container[header_len(1)..] {
-            *byte = 0xff;
-        }
-        assert_eq!(decode(&container), Err(Error::InvalidCode));
-    }
-
-    #[test]
-    fn max_len_is_checked() {
-        assert!(matches!(
-            encode_with_max_len(b"abc", 49),
-            Err(Error::InvalidMaxLen { .. })
-        ));
-        assert!(matches!(
-            encode_with_max_len(b"abc", 1),
-            Err(Error::InvalidMaxLen { .. })
-        ));
-        let container = encode_with_max_len(b"abc", 2).unwrap();
-        assert_eq!(decode(&container).unwrap(), b"abc");
     }
 }

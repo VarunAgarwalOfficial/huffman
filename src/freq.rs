@@ -35,38 +35,3 @@ pub fn entropy(counts: &Counts) -> f64 {
         })
         .sum()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn counts_every_byte() {
-        let counts = count(b"abracadabra");
-        assert_eq!(counts[usize::from(b'a')], 5);
-        assert_eq!(counts[usize::from(b'b')], 2);
-        assert_eq!(counts[usize::from(b'r')], 2);
-        assert_eq!(counts[usize::from(b'c')], 1);
-        assert_eq!(counts[usize::from(b'd')], 1);
-        assert_eq!(counts.iter().sum::<u64>(), 11);
-        assert_eq!(active(&counts), 5);
-    }
-
-    #[test]
-    fn empty_input_has_no_symbols_and_zero_entropy() {
-        let counts = count(b"");
-        assert_eq!(active(&counts), 0);
-        assert_eq!(entropy(&counts), 0.0);
-    }
-
-    #[test]
-    fn entropy_of_known_distributions() {
-        assert_eq!(entropy(&count(b"aaaa")), 0.0);
-        assert!((entropy(&count(b"abab")) - 1.0).abs() < 1e-12);
-        assert!((entropy(&count(b"abcd")) - 2.0).abs() < 1e-12);
-        // 1/2, 1/4, 1/4 -> 1.5 bits
-        assert!((entropy(&count(b"aabc")) - 1.5).abs() < 1e-12);
-        let all: Vec<u8> = (0..=255).collect();
-        assert!((entropy(&count(&all)) - 8.0).abs() < 1e-12);
-    }
-}

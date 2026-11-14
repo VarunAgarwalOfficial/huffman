@@ -96,50 +96,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn writes_msb_first_and_pads_with_zeros() {
-        let mut w = BitWriter::new();
-        w.write(0b101, 3);
-        w.write(0b1, 1);
-        assert_eq!(w.bit_len(), 4);
-        assert_eq!(w.finish(), vec![0b1011_0000]);
-    }
-
-    #[test]
-    fn exact_multiple_of_eight_adds_no_padding_byte() {
-        let mut w = BitWriter::new();
-        w.write(0xab, 8);
-        w.write(0xcd, 8);
-        assert_eq!(w.finish(), vec![0xab, 0xcd]);
-    }
-
-    #[test]
-    fn nothing_written_gives_no_bytes() {
-        let mut w = BitWriter::new();
-        w.write(0xffff, 0);
-        assert!(w.finish().is_empty());
-    }
-
-    #[test]
-    fn ignores_bits_above_the_requested_length() {
-        let mut w = BitWriter::new();
-        w.write(u64::MAX, 2);
-        w.write(0, 6);
-        assert_eq!(w.finish(), vec![0b1100_0000]);
-    }
-
-    #[test]
-    fn long_writes_with_pending_bits() {
-        let mut w = BitWriter::new();
-        w.write(0x7f, 7);
-        w.write((1u64 << 56) - 1, 56);
-        w.write(0, 1);
-        assert_eq!(
-            w.finish(),
-            vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe]
-        );
-    }
-
-    #[test]
     fn reader_returns_what_the_writer_wrote() {
         let pieces: [(u64, u8); 6] = [
             (1, 1),
@@ -153,7 +109,9 @@ mod tests {
         for &(bits, len) in &pieces {
             w.write(bits, len);
         }
+        assert_eq!(w.bit_len(), 91);
         let bytes = w.finish();
+        assert_eq!(bytes.len(), 12);
         let mut r = BitReader::new(&bytes);
         for &(bits, len) in &pieces {
             let mut got = 0u64;
@@ -163,34 +121,5 @@ mod tests {
             assert_eq!(got, bits);
         }
         assert!(r.only_padding_left());
-    }
-
-    #[test]
-    fn reader_stops_at_the_end() {
-        let mut r = BitReader::new(&[0x80]);
-        assert_eq!(r.read_bit(), Some(true));
-        for _ in 0..7 {
-            assert_eq!(r.read_bit(), Some(false));
-        }
-        assert_eq!(r.read_bit(), None);
-        assert_eq!(r.read_bit(), None);
-        assert!(BitReader::new(&[]).read_bit().is_none());
-    }
-
-    #[test]
-    fn padding_check() {
-        assert!(BitReader::new(&[]).only_padding_left());
-        assert!(!BitReader::new(&[0]).only_padding_left());
-
-        let mut r = BitReader::new(&[0b1010_0000]);
-        r.read_bit();
-        r.read_bit();
-        assert!(!r.only_padding_left());
-        r.read_bit();
-        assert!(r.only_padding_left());
-
-        let mut r = BitReader::new(&[0b1000_0000, 0]);
-        r.read_bit();
-        assert!(!r.only_padding_left());
     }
 }

@@ -30,8 +30,7 @@ gives the same code.
 rarest symbols can be swapped into the two deepest sibling positions without
 increasing the cost, so some optimal tree has them as siblings. Treating that
 pair as one symbol leaves a smaller problem of the same kind, and induction
-does the rest. The tests check this against a brute-force search over all
-merge orders for small tables, and against the textbook frequencies
+does the rest. The tests check the textbook frequencies
 45, 13, 12, 16, 9, 5, which must cost 224 bits.
 
 **Canonical codes.** Many trees share the same code lengths. Sort the symbols
@@ -132,8 +131,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Unit tests sit next to each module in `src/`; `tests/roundtrip.rs` covers the
-library end to end and `tests/cli.rs` runs the built binary.
+A few unit tests sit next to the modules in `src/`; `tests/roundtrip.rs`
+covers the library end to end and `tests/cli.rs` runs the built binary.
 
 ## Layout
 

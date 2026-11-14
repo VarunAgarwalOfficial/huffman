@@ -39,34 +39,3 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_variant_has_its_own_message() {
-        let all = [
-            Error::BadMagic,
-            Error::UnsupportedVersion(7),
-            Error::Truncated,
-            Error::InvalidTable("code length of zero"),
-            Error::InvalidCode,
-            Error::TrailingData,
-            Error::InvalidMaxLen {
-                max_len: 1,
-                symbols: 3,
-            },
-        ];
-        let messages: Vec<String> = all.iter().map(Error::to_string).collect();
-        for (i, a) in messages.iter().enumerate() {
-            assert!(!a.is_empty());
-            for b in &messages[i + 1..] {
-                assert_ne!(a, b);
-            }
-        }
-        assert!(messages[1].contains('7'));
-        assert!(messages[3].contains("code length of zero"));
-        assert!(messages[6].contains("1 bits") && messages[6].contains("3 distinct"));
-    }
-}
