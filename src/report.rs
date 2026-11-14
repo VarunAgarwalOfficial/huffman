@@ -1,6 +1,7 @@
 //! The "see it work" view: code table, tree drawing and summary as text.
 
 use std::fmt::Write as _;
+use std::io::Read;
 
 use crate::canonical::{self, Code};
 use crate::container;
@@ -25,23 +26,56 @@ pub struct Report {
     /// Used symbols, most frequent first (ties by byte value).
     pub rows: Vec<Row>,
     pub input_bytes: u64,
-    /// Size of the real encoded container.
+    /// Size of the container `encode` writes for this input.
     pub output_bytes: u64,
-    /// Header plus code length table, part of `output_bytes`.
-    pub header_bytes: u64,
+    /// Headers, tables and checksums, part of `output_bytes`.
+    pub overhead_bytes: u64,
+    /// Number of data blocks in that container.
+    pub blocks: u64,
     /// Shannon entropy in bits per symbol.
     pub entropy: f64,
-    /// Average code length in bits per symbol.
+    /// Average code length in bits per symbol, for one code over the whole input.
     pub average_len: f64,
 }
 
-/// Builds the code for `data` and gathers the numbers worth showing.
-pub fn analyze(data: &[u8]) -> Result<Report, Error> {
-    let counts = freq::count(data);
+/// Reads `input` to its end, builds the code for all of it and gathers the
+/// numbers worth showing. Holds one block at a time.
+///
+/// The table and tree describe one code for the whole input. The container
+/// codes each block of 1 MiB on its own, so for larger inputs its size is
+/// computed block by block and can differ slightly from that single code.
+pub fn analyze(mut input: impl Read) -> Result<Report, Error> {
+    let mut counts = [0u64; freq::SYMBOLS];
+    let mut output_bytes = (container::HEADER_LEN + container::END_LEN) as u64;
+    let mut overhead_bytes = output_bytes;
+    let mut blocks = 0u64;
+    let mut block = vec![0u8; container::BLOCK_SIZE];
+    loop {
+        let mut filled = 0;
+        while filled < block.len() {
+            match input.read(&mut block[filled..]) {
+                Ok(0) => break,
+                Ok(n) => filled += n,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err(e.into()),
+            }
+        }
+        if filled == 0 {
+            break;
+        }
+        let block_counts = freq::count(&block[..filled]);
+        let (len, overhead) = container::block_len(&block_counts)?;
+        output_bytes += len;
+        overhead_bytes += overhead;
+        blocks += 1;
+        for (total, &c) in counts.iter_mut().zip(block_counts.iter()) {
+            *total += c;
+        }
+    }
+
+    let input_bytes: u64 = counts.iter().sum();
     let lengths = tree::limited_code_lengths(&counts, canonical::MAX_CODE_LEN)?;
     let codes = canonical::assign(&lengths)?;
-    let encoded = container::encode(data)?;
-
     let mut rows: Vec<Row> = (0..=255u8)
         .filter(|&s| counts[usize::from(s)] > 0)
         .map(|s| Row {
@@ -52,15 +86,16 @@ pub fn analyze(data: &[u8]) -> Result<Report, Error> {
         .collect();
     rows.sort_by(|a, b| b.count.cmp(&a.count).then(a.symbol.cmp(&b.symbol)));
 
-    let average_len = if data.is_empty() {
+    let average_len = if input_bytes == 0 {
         0.0
     } else {
-        tree::total_bits(&counts, &lengths) as f64 / data.len() as f64
+        tree::total_bits(&counts, &lengths) as f64 / input_bytes as f64
     };
     Ok(Report {
-        input_bytes: data.len() as u64,
-        output_bytes: encoded.len() as u64,
-        header_bytes: container::header_len(rows.len()) as u64,
+        input_bytes,
+        output_bytes,
+        overhead_bytes,
+        blocks,
         entropy: freq::entropy(&counts),
         average_len,
         rows,
@@ -210,10 +245,16 @@ pub fn render_summary(report: &Report) -> String {
     let _ = writeln!(out, "input bytes     {}", report.input_bytes);
     let _ = writeln!(
         out,
-        "output bytes    {} ({} header and table, {} payload)",
+        "output bytes    {} ({} headers, tables and checksums; {} code words; {} {})",
         report.output_bytes,
-        report.header_bytes,
-        report.output_bytes - report.header_bytes
+        report.overhead_bytes,
+        report.output_bytes - report.overhead_bytes,
+        report.blocks,
+        if report.blocks == 1 {
+            "block"
+        } else {
+            "blocks"
+        }
     );
     if report.input_bytes == 0 {
         let _ = writeln!(out, "ratio           n/a (empty input)");
@@ -254,7 +295,7 @@ mod tests {
         ] {
             data.extend(std::iter::repeat_n(symbol, count));
         }
-        let report = analyze(&data).unwrap();
+        let report = analyze(data.as_slice()).unwrap();
         let expected = "\
 tree (branch labels are code bits, numbers are weights)
 (100)

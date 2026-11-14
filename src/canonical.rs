@@ -6,7 +6,6 @@
 //! Encoder and decoder can then agree on the whole code from the lengths
 //! alone, so the file only has to store one small number per symbol.
 
-use crate::bits::BitReader;
 use crate::error::Error;
 use crate::freq::SYMBOLS;
 use crate::tree::Lengths;
@@ -93,13 +92,21 @@ pub fn assign(lengths: &Lengths) -> Result<[Code; SYMBOLS], Error> {
     Ok(codes)
 }
 
-/// Turns bits back into symbols using only per-length bookkeeping.
+/// Codes up to this many bits are decoded with one table lookup.
+const FAST_BITS: u32 = 11;
+
+/// Turns bits back into symbols.
 ///
-/// All codes of one length are consecutive numbers, so it is enough to know,
-/// for each length, the first code, how many codes there are, and where their
-/// symbols start in the canonically ordered symbol list.
+/// Codes of up to 11 bits, which is nearly all of them, are found with one
+/// lookup in a 2048-entry table indexed by the next 11 bits. Longer codes use
+/// per-length bookkeeping: all codes of one length are consecutive numbers, so
+/// it is enough to know, for each length, the first code, how many codes there
+/// are, and where their symbols start in the canonically ordered symbol list.
 #[derive(Debug, Clone)]
 pub struct Decoder {
+    /// `length << 8 | symbol` for every 11-bit window that starts with a short
+    /// code, zero otherwise.
+    fast: Vec<u16>,
     first: [u64; MAX_CODE_LEN as usize + 1],
     count: [u64; MAX_CODE_LEN as usize + 1],
     offset: [usize; MAX_CODE_LEN as usize + 1],
@@ -108,7 +115,7 @@ pub struct Decoder {
 
 impl Decoder {
     pub fn new(lengths: &Lengths) -> Result<Self, Error> {
-        validate(lengths)?;
+        let codes = assign(lengths)?;
         let top = MAX_CODE_LEN as usize + 1;
         let mut count = [0u64; MAX_CODE_LEN as usize + 1];
         for &l in lengths.iter().filter(|&&l| l > 0) {
@@ -124,7 +131,18 @@ impl Decoder {
             offset[len] = seen;
             seen += count[len] as usize;
         }
+        let mut fast = vec![0u16; 1 << FAST_BITS];
+        for (symbol, code) in codes.iter().enumerate() {
+            let len = u32::from(code.len);
+            if len == 0 || len > FAST_BITS {
+                continue;
+            }
+            let start = (code.bits << (FAST_BITS - len)) as usize;
+            let entry = (u16::from(code.len) << 8) | symbol as u16;
+            fast[start..start + (1 << (FAST_BITS - len))].fill(entry);
+        }
         Ok(Self {
+            fast,
             first,
             count,
             offset,
@@ -132,23 +150,59 @@ impl Decoder {
         })
     }
 
-    /// Number of symbols that have a code.
-    pub fn symbol_count(&self) -> usize {
-        self.symbols.len()
-    }
-
-    /// Reads one code word and returns its symbol.
-    pub fn decode_symbol(&self, reader: &mut BitReader<'_>) -> Result<u8, Error> {
-        let mut code = 0u64;
-        for len in 1..=MAX_CODE_LEN as usize {
-            let bit = reader.read_bit().ok_or(Error::Truncated)?;
-            code = (code << 1) | u64::from(bit);
+    /// The symbol and length of the code at the top of `window`, for codes
+    /// longer than the fast table covers.
+    fn long_code(&self, window: u64) -> Result<(u8, u32), Error> {
+        for len in FAST_BITS as usize + 1..=MAX_CODE_LEN as usize {
+            let code = window >> (64 - len);
             if let Some(index) = code.checked_sub(self.first[len]) {
                 if index < self.count[len] {
-                    return Ok(self.symbols[self.offset[len] + index as usize]);
+                    return Ok((self.symbols[self.offset[len] + index as usize], len as u32));
                 }
             }
         }
         Err(Error::InvalidCode)
+    }
+
+    /// Decodes exactly `count` symbols from `payload` and appends them to `out`.
+    ///
+    /// The payload must hold those code words, most significant bit first,
+    /// followed by nothing but zero bits filling up the last byte.
+    pub fn decode_into(
+        &self,
+        payload: &[u8],
+        count: usize,
+        out: &mut Vec<u8>,
+    ) -> Result<(), Error> {
+        let total_bits = payload.len() as u64 * 8;
+        let mut used = 0u64;
+        // The next bits to decode sit at the top of `window`; `have` of them are real.
+        let mut window = 0u64;
+        let mut have = 0u32;
+        let mut pos = 0usize;
+        for _ in 0..count {
+            while have <= 56 && pos < payload.len() {
+                window |= u64::from(payload[pos]) << (56 - have);
+                pos += 1;
+                have += 8;
+            }
+            let entry = self.fast[(window >> (64 - FAST_BITS)) as usize];
+            let (symbol, len) = if entry != 0 {
+                (entry as u8, u32::from(entry >> 8))
+            } else {
+                self.long_code(window)?
+            };
+            used += u64::from(len);
+            if used > total_bits {
+                return Err(Error::Truncated);
+            }
+            window <<= len;
+            have -= len;
+            out.push(symbol);
+        }
+        if total_bits - used >= 8 || window != 0 {
+            return Err(Error::TrailingData);
+        }
+        Ok(())
     }
 }

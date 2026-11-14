@@ -7,17 +7,54 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 use crate::error::Error;
-use crate::freq::{Counts, SYMBOLS};
+use crate::freq::{self, Counts, SYMBOLS};
 
 /// Code length in bits for every byte value; zero means the byte is unused.
 pub type Lengths = [u8; SYMBOLS];
 
-/// Optimal code lengths for the given counts.
+/// One step of the greedy rule: nodes `a` and `b` are joined under a new node.
+///
+/// Node ids: the used byte values in ascending order are 0, 1, ...; the
+/// node created by merge number k is `leaves + k`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Merge {
+    /// The lighter of the two nodes; it becomes the 0 branch.
+    pub a: usize,
+    /// The other node; it becomes the 1 branch.
+    pub b: usize,
+    /// Weight of the new node: the sum of the two.
+    pub weight: u64,
+}
+
+/// The merges the greedy rule performs, in order. Empty for fewer than two
+/// used symbols.
 ///
 /// Ties are broken deterministically: between equal weights, leaves come
 /// before merged nodes, lower byte values before higher ones and older merged
-/// nodes before newer ones. A table with a single used symbol gets a one-bit
-/// code so that every symbol still costs at least one bit.
+/// nodes before newer ones.
+pub fn merges(counts: &Counts) -> Vec<Merge> {
+    let leaves = freq::active(counts);
+    // The heap orders by (weight, id), smallest first.
+    let mut heap: BinaryHeap<Reverse<(u64, usize)>> = counts
+        .iter()
+        .filter(|&&c| c > 0)
+        .enumerate()
+        .map(|(id, &c)| Reverse((c, id)))
+        .collect();
+    let mut steps = Vec::with_capacity(leaves.saturating_sub(1));
+    while heap.len() > 1 {
+        if let (Some(Reverse((wa, a))), Some(Reverse((wb, b)))) = (heap.pop(), heap.pop()) {
+            let weight = wa.saturating_add(wb);
+            heap.push(Reverse((weight, leaves + steps.len())));
+            steps.push(Merge { a, b, weight });
+        }
+    }
+    steps
+}
+
+/// Optimal code lengths for the given counts: the depth of each leaf in the
+/// tree that [`merges`] builds. A table with a single used symbol gets a
+/// one-bit code so that every symbol still costs at least one bit.
 pub fn code_lengths(counts: &Counts) -> Lengths {
     let symbols: Vec<usize> = (0..SYMBOLS).filter(|&s| counts[s] > 0).collect();
     let mut lengths = [0u8; SYMBOLS];
@@ -30,33 +67,15 @@ pub fn code_lengths(counts: &Counts) -> Lengths {
         _ => {}
     }
 
-    // Node ids: leaves first (in byte order), then merged nodes in the order
-    // they are created. The heap orders by (weight, id), smallest first.
     let leaves = symbols.len();
-    let mut parent = vec![usize::MAX; 2 * leaves - 1];
-    let mut heap: BinaryHeap<Reverse<(u64, usize)>> = symbols
-        .iter()
-        .enumerate()
-        .map(|(id, &s)| Reverse((counts[s], id)))
-        .collect();
-
-    let mut next = leaves;
-    while let (Some(Reverse((wa, a))), Some(Reverse((wb, b)))) = (heap.pop(), heap.pop()) {
-        parent[a] = next;
-        parent[b] = next;
-        heap.push(Reverse((wa.saturating_add(wb), next)));
-        next += 1;
-        if heap.len() == 1 {
-            break;
-        }
-    }
-
-    // A parent always has a larger id than its children, so walking ids
-    // downwards from the root sees every parent before its children.
-    let root = parent.len() - 1;
-    let mut depth = vec![0u8; parent.len()];
-    for id in (0..root).rev() {
-        depth[id] = depth[parent[id]] + 1;
+    let steps = merges(counts);
+    // A parent always has a larger id than its children, so walking the
+    // merges backwards sees every parent before its children.
+    let mut depth = vec![0u8; leaves + steps.len()];
+    for (k, step) in steps.iter().enumerate().rev() {
+        let below = depth[leaves + k] + 1;
+        depth[step.a] = below;
+        depth[step.b] = below;
     }
     for (id, &s) in symbols.iter().enumerate() {
         lengths[s] = depth[id];

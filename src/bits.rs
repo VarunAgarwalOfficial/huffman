@@ -1,4 +1,4 @@
-//! Bit-level output and input, most significant bit first.
+//! Bit-level output, most significant bit first.
 
 /// Longest run of bits a single `BitWriter::write` call accepts.
 pub const MAX_WRITE: u8 = 56;
@@ -49,45 +49,15 @@ impl BitWriter {
         }
         self.out
     }
-}
 
-/// Reads single bits from a byte slice.
-#[derive(Debug, Clone)]
-pub struct BitReader<'a> {
-    data: &'a [u8],
-    byte: usize,
-    /// Bits already consumed from `data[byte]`, 0..=7.
-    bit: u8,
-}
-
-impl<'a> BitReader<'a> {
-    pub fn new(data: &'a [u8]) -> Self {
+    /// Starts a writer that reuses `buffer` (cleared first) for its output.
+    pub fn with_buffer(mut buffer: Vec<u8>) -> Self {
+        buffer.clear();
         Self {
-            data,
-            byte: 0,
-            bit: 0,
+            out: buffer,
+            acc: 0,
+            pending: 0,
         }
-    }
-
-    /// The next bit, or `None` once the data is used up.
-    pub fn read_bit(&mut self) -> Option<bool> {
-        let byte = *self.data.get(self.byte)?;
-        let value = (byte >> (7 - self.bit)) & 1 == 1;
-        self.bit += 1;
-        if self.bit == 8 {
-            self.bit = 0;
-            self.byte += 1;
-        }
-        Some(value)
-    }
-
-    /// True if nothing is left except zero bits filling up the current byte.
-    pub fn only_padding_left(&self) -> bool {
-        if self.bit == 0 {
-            return self.byte == self.data.len();
-        }
-        let rest = self.data[self.byte] & (0xff >> self.bit);
-        rest == 0 && self.byte + 1 == self.data.len()
     }
 }
 
@@ -112,14 +82,18 @@ mod tests {
         assert_eq!(w.bit_len(), 91);
         let bytes = w.finish();
         assert_eq!(bytes.len(), 12);
-        let mut r = BitReader::new(&bytes);
+        // Read the pieces back by walking the bytes bit by bit.
+        let mut position = 0usize;
         for &(bits, len) in &pieces {
             let mut got = 0u64;
             for _ in 0..len {
-                got = (got << 1) | u64::from(r.read_bit().unwrap());
+                let bit = (bytes[position / 8] >> (7 - position % 8)) & 1;
+                got = (got << 1) | u64::from(bit);
+                position += 1;
             }
             assert_eq!(got, bits);
         }
-        assert!(r.only_padding_left());
+        // The five padding bits are zero.
+        assert_eq!(bytes[11] & 0x1f, 0);
     }
 }
