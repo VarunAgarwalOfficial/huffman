@@ -1,6 +1,6 @@
 [package]
 name = "huffman"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.88"
 description = "Huffman coding for arbitrary bytes: encoder, decoder and a view of the code tree"
@@ -15,3 +15,6 @@ name = "huffman"
 path = "src/main.rs"
 
 [dependencies]
+
+[workspace]
+members = ["wasm"]

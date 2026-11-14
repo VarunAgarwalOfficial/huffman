@@ -1,0 +1,161 @@
+/* Page-specific rules for the Huffman demo. Tokens come from base.css. */
+
+textarea {
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+}
+
+.totals div {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+
+.totals dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.totals dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--text-md);
+}
+
+.controls button {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+}
+
+.controls .field {
+  flex: 1 1 12rem;
+}
+
+.status {
+  min-height: 3em;
+  margin: var(--space-3) 0;
+  font-size: var(--text-sm);
+}
+
+#tree {
+  /* Keeps its size and scrolls sideways inside the panel on a narrow screen. */
+  max-width: none;
+  margin: 0 auto;
+  font-family: var(--mono);
+}
+
+#tree .edge {
+  stroke: var(--canvas-muted);
+  stroke-width: 1.5;
+}
+
+#tree .node {
+  fill: var(--canvas-bg);
+  stroke: var(--canvas-muted);
+  stroke-width: 1.5;
+}
+
+#tree .node.old {
+  stroke: var(--canvas-ink);
+}
+
+#tree .node.pair {
+  fill: var(--canvas-compare);
+  stroke: var(--canvas-compare);
+}
+
+#tree .node.made {
+  fill: var(--canvas-accent);
+  stroke: var(--canvas-accent);
+}
+
+#tree text {
+  fill: var(--canvas-ink);
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+#tree text.on-colour {
+  fill: var(--canvas-bg);
+  font-weight: 600;
+}
+
+#tree text.count {
+  fill: var(--canvas-muted);
+  font-size: 11px;
+}
+
+.swatch.outline {
+  background: transparent;
+  border: 1.5px solid var(--canvas-muted);
+}
+
+details {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.merges {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+
+.merges li[aria-current="step"] {
+  font-weight: 600;
+}
+
+.merges li.pending {
+  color: var(--muted);
+}
+
+td.code,
+td.symbol {
+  font-family: var(--mono);
+}
+
+td.code {
+  text-align: left;
+}
+
+th:last-child {
+  text-align: left;
+}
+
+.bits {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+  gap: var(--space-1) 2px;
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+}
+
+.bits li {
+  display: inline-grid;
+  justify-items: center;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.bits li:nth-child(odd) {
+  background: var(--canvas-faint);
+}
+
+.bits small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}

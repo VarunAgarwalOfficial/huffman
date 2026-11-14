@@ -1,0 +1,13 @@
+[package]
+name = "huffman-wasm"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.88"
+description = "C-ABI WebAssembly interface to the huffman library, for the demo page"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+huffman = { path = ".." }

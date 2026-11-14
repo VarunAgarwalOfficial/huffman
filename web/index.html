@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Huffman coding, step by step</title>
+    <meta name="description" content="Type text and watch a Huffman tree being built, then see the bits." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v4M8 7L4 12M8 7l4 5' stroke='%232a6661' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='8' cy='3' r='2' fill='%232a6661'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <h1 class="site-title">Huffman coding, step by step</h1>
+      <button id="theme" class="quiet" type="button">Theme: auto</button>
+    </header>
+    <main id="main">
+      <p class="lede">
+        Type some text. The two rarest symbols are joined, again and again, until one tree is left. A symbol's depth
+        in that tree is the length of its code, so common symbols get short codes.
+      </p>
+
+      <section class="panel" aria-labelledby="h-text">
+        <h2 id="h-text">Text</h2>
+        <label class="field" for="text">
+          Text to encode (each UTF-8 byte is one symbol)
+          <textarea id="text" rows="2" spellcheck="false" autocomplete="off">she sells sea shells by the sea shore</textarea>
+        </label>
+        <dl class="totals" id="totals" aria-live="polite"></dl>
+      </section>
+
+      <section class="panel" aria-labelledby="h-tree">
+        <h2 id="h-tree">Building the tree</h2>
+        <div class="row controls">
+          <button id="back" type="button">Back</button>
+          <button id="play" type="button" class="primary">Play</button>
+          <button id="step" type="button">Step</button>
+          <label class="field" for="position">
+            <span id="position-label">Merge 0 of 0</span>
+            <input id="position" type="range" min="0" max="0" value="0" step="1" />
+          </label>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+        <div class="scroll-x">
+          <svg id="tree" role="img" aria-labelledby="tree-title"><title id="tree-title">Huffman tree</title></svg>
+        </div>
+        <ul class="legend">
+          <li><span class="swatch" style="color: var(--canvas-compare)"></span>the two lightest nodes, being joined</li>
+          <li><span class="swatch" style="color: var(--canvas-accent)"></span>the node they form</li>
+          <li><span class="swatch outline"></span>not joined yet</li>
+        </ul>
+        <details>
+          <summary>The merges as a list</summary>
+          <ol id="merges" class="merges"></ol>
+        </details>
+      </section>
+
+      <div class="grid-2">
+        <section class="panel" aria-labelledby="h-table">
+          <h2 id="h-table">Code table</h2>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr><th scope="col">Symbol</th><th scope="col">Count</th><th scope="col">Bits</th><th scope="col">Code</th></tr>
+              </thead>
+              <tbody id="table"></tbody>
+            </table>
+          </div>
+          <p class="note">
+            The tree only decides how long each code is. The codes are then handed out in order, shortest first
+            (canonical codes), so a decoder can rebuild them from the lengths alone.
+          </p>
+        </section>
+
+        <section class="panel" aria-labelledby="h-bits">
+          <h2 id="h-bits">The bits</h2>
+          <ol id="bits" class="bits"></ol>
+          <p id="bits-note" class="note"></p>
+        </section>
+      </div>
+    </main>
+    <footer class="site-footer">
+      Computed by the same Rust code as the command line tool, compiled to WebAssembly. Nothing leaves this page.
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
