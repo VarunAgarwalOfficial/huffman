@@ -210,7 +210,7 @@ The page uses IBM Plex (SIL Open Font License, `web/fonts/OFL.txt`).
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npx @biomejs/biome@2.6.7 check web
+npx @biomejs/biome@2.6.7 check
 ```
 
 A few unit tests sit next to the modules in `src/`; `tests/roundtrip.rs`
