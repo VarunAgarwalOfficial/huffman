@@ -103,6 +103,10 @@ textarea {
   border-radius: 0;
 }
 
+.swatch.round {
+  border-radius: 50%;
+}
+
 .controls {
   margin-top: var(--space-4);
 }

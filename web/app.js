@@ -90,9 +90,10 @@ function drawTree() {
   // tree with very many leaves is scaled down to fit.
   const room = svg.parentElement.clientWidth - 2;
   const names = model.symbols.map((symbol) => label(symbol.byte));
-  const need = names.map((name) => Math.ceil(textWidth(name)) + 12);
+  const need = names.map((name) => Math.ceil(textWidth(name)) + 16);
   let cell = Math.max(28, Math.min(46, Math.floor(room / Math.max(leaves, 1))));
-  const slots = (c) => need.map((n) => Math.max(c, n + 2));
+  // Every box keeps at least 8 px from its neighbours.
+  const slots = (c) => need.map((n) => Math.max(c, n + 8));
   let slot = slots(cell);
   const sum = (list) => list.reduce((a, b) => a + b, 0);
   while (sum(slot) > room && cell > 24) slot = slots(--cell);
@@ -147,7 +148,7 @@ function drawTree() {
     if (isLeaf) {
       const name = names[id];
       // Long names ("space") get a wider box, in a column wide enough to hold it.
-      const wide = Math.min(slot[id] - 1, Math.max(box, need[id]));
+      const wide = Math.min(slot[id] - 8, Math.max(box, need[id]));
       svg.append(
         element("rect", {
           class: `node ${state}`,
