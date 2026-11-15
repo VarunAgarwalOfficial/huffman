@@ -2,7 +2,7 @@
 
 textarea {
   resize: vertical;
-  line-height: 1.4;
+  line-height: var(--site-leading-body);
 }
 
 .totals {
@@ -14,19 +14,19 @@ textarea {
 
 .totals div {
   padding-left: var(--space-3);
-  border-left: 2px solid var(--border-strong);
+  border-left: var(--site-rule-width) solid var(--border);
 }
 
 .totals dt {
   font-size: var(--text-xs);
+  font-style: italic;
   color: var(--muted);
 }
 
 .totals dd {
   margin: 0;
   font-variant-numeric: lining-nums tabular-nums;
-  font-family: var(--mono);
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
 }
 
 .controls button {
@@ -49,8 +49,8 @@ textarea {
   width: 100%;
   height: auto;
   margin: 0 auto;
-  font-family: var(--mono);
-  font-variant-numeric: lining-nums;
+  font-family: var(--font);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 #tree .edge {
@@ -80,19 +80,17 @@ textarea {
 
 #tree text {
   fill: var(--canvas-ink);
-  font-size: 13px;
+  font-size: var(--site-step--1);
   text-anchor: middle;
   dominant-baseline: central;
 }
 
 #tree text.on-colour {
   fill: var(--canvas-bg);
-  font-weight: 600;
 }
 
 #tree text.count {
   fill: var(--canvas-muted);
-  font-size: 11px;
 }
 
 .swatch.outline {
@@ -102,7 +100,7 @@ textarea {
 }
 
 .swatch.outline.square {
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .controls {
@@ -115,7 +113,6 @@ details {
 
 summary {
   cursor: pointer;
-  font-weight: 500;
 }
 
 details > :not(summary) {
@@ -128,7 +125,10 @@ details > :not(summary) {
 }
 
 .merges li[aria-current="step"] {
-  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--site-color-link-line);
+  text-underline-offset: var(--site-underline-offset);
 }
 
 .merges li.pending {
@@ -137,7 +137,7 @@ details > :not(summary) {
 
 td.code,
 td.symbol {
-  font-family: var(--mono);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 td.code {
@@ -156,13 +156,12 @@ th {
 
 .bits {
   display: flex;
-  font-variant-numeric: lining-nums;
   margin: 0;
   padding: 0;
   list-style: none;
   flex-wrap: wrap;
   gap: var(--space-1) 2px;
-  font-family: var(--mono);
+  font-variant-numeric: lining-nums tabular-nums;
   font-size: var(--text-sm);
 }
 
@@ -170,11 +169,11 @@ th {
   display: inline-grid;
   justify-items: center;
   padding: 2px 4px;
-  border-radius: 3px;
 }
 
+/* Every other character's bits on the code background, so the groups can be told apart. */
 .bits li:nth-child(odd) {
-  background: var(--canvas-faint);
+  background: var(--site-color-code-bg);
 }
 
 .bits small {

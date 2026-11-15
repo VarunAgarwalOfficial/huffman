@@ -202,7 +202,38 @@ cargo build --release -p huffman-wasm --target wasm32-unknown-unknown
 cp target/wasm32-unknown-unknown/release/huffman_wasm.wasm web/huffman.wasm
 ```
 
-The page uses IBM Plex (SIL Open Font License, `web/fonts/OFL.txt`).
+### The look
+
+The page uses the owner's site look, "Editorial". `web/c-editorial-tokens.css`
+is copied unchanged from the website, and `web/base.css` (the same file in
+huffman, quantum-key-exchange and fog-scheduling) maps the page's own
+variables onto it: page and ink in light and dark (following the system), the
+oxblood accent for links and focus only, Newsreader for text and the tree's
+labels, IBM Plex Mono for code, CM Web Serif for mathematics, the site's
+sizes (17, 20, 22 and 28 px, and the title), spacing, measure, rules and focus
+ring. The token file asks for its fonts at `/fonts/`, so serve `web/` as the
+site root (as above) or from the website. The fonts and their licences
+(`Newsreader-OFL.txt`, `IBM-Plex-OFL.txt`, `GUST-FONT-LICENSE.txt`,
+`LPPL-1.3c.txt`, `NewCM-License.txt`) are in `web/fonts/`.
+
+Sections are set off by space and a rule, with no boxes, fills or shadows.
+Play is the only filled control. Meaning colours, the same in all six tools:
+
+| Role in the code | Meaning here                      | Site token             |
+| ---------------- | --------------------------------- | ---------------------- |
+| compare          | the two rarest, being joined now  | `--site-mean-measured` |
+| accent           | the join they form                | `--site-mean-open`     |
+| change           | (written, moved or wrong; unused) | `--site-mean-against`  |
+| good             | (finished or kept; unused)        | `--site-mean-proved`   |
+
+Removed in the restyle: IBM Plex Sans, the old teal palette and its six
+series colours, the unused `theme.js`, panel boxes and fills, rounded corners,
+the drawn select arrow, transitions and the brightness change on hover. What
+the new typeface moved: tree labels are 17 px instead of 13 and 11, so each
+leaf's column is at least as wide as its label ("space" gets a wider column
+than "e"), rows are at least 46 px apart, and joins are a little larger. The
+bits, codes and totals are set in the text face with lining figures instead of
+the monospace.
 
 ## Test
 
@@ -229,7 +260,7 @@ src/report.rs     text for inspect: table, tree, summary
 src/main.rs       command line
 src/completions.rs  shell completion scripts
 wasm/             C interface for the demo page
-web/              the demo page
+web/              the demo page; base.css and the tokens give it the site's look
 scripts/bench.sh  comparison with gzip
 ```
 

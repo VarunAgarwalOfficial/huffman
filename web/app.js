@@ -4,6 +4,9 @@
 const $ = (id) => document.getElementById(id);
 const SVG = "http://www.w3.org/2000/svg";
 const MAX_SHOWN = 400;
+// Labels in the tree are set in the page's text face at the site's small size, never smaller.
+const SMALL = 17;
+const measure = document.createElement("canvas").getContext("2d");
 const encoder = new TextEncoder();
 
 let wasm;
@@ -64,6 +67,12 @@ function layout() {
   return { x, depth, deepest };
 }
 
+/** Width of a label at the small size, in the page's text face. */
+function textWidth(text) {
+  measure.font = `${SMALL}px ${getComputedStyle(document.body).fontFamily}`;
+  return measure.measureText(text).width;
+}
+
 function element(name, attributes, text) {
   const node = document.createElementNS(SVG, name);
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
@@ -77,17 +86,34 @@ function drawTree() {
   const leaves = model.symbols.length;
   const { x, depth, deepest } = layout();
   // Narrow screens get narrower columns drawn at full size, so the labels stay readable.
-  // Only a tree with very many leaves is scaled down to fit.
+  // A column is never narrower than its label ("space" needs more room than "e"); only a
+  // tree with very many leaves is scaled down to fit.
   const room = svg.parentElement.clientWidth - 2;
-  const cell = Math.max(28, Math.min(46, Math.floor(room / Math.max(leaves, 1))));
+  const names = model.symbols.map((symbol) => label(symbol.byte));
+  const need = names.map((name) => Math.ceil(textWidth(name)) + 12);
+  let cell = Math.max(28, Math.min(46, Math.floor(room / Math.max(leaves, 1))));
+  const slots = (c) => need.map((n) => Math.max(c, n + 2));
+  let slot = slots(cell);
+  const sum = (list) => list.reduce((a, b) => a + b, 0);
+  while (sum(slot) > room && cell > 24) slot = slots(--cell);
   const box = cell - 8;
-  const rowHeight = Math.round(cell * 1.26);
-  const width = Math.max(leaves, 1) * cell;
-  const tall = (deepest + 1) * rowHeight + 16;
+  const rowHeight = Math.max(46, Math.round(cell * 1.26));
+  const width = Math.max(sum(slot), cell);
+  const tall = (deepest + 1) * rowHeight + 26;
   svg.setAttribute("viewBox", `0 0 ${width} ${tall}`);
   // Shrinks to fit a narrow screen instead of being cut off; never grows past its own size.
   svg.style.maxWidth = `${width}px`;
-  const px = (id) => x[id] * cell + cell / 2;
+  // Leaves sit left to right in tree order, each in its own column; a join sits midway over its two.
+  const centre = new Array(leaves + model.merges.length).fill(0);
+  let left = 0;
+  for (const id of [...Array(leaves).keys()].sort((a, b) => x[a] - x[b])) {
+    centre[id] = left + slot[id] / 2;
+    left += slot[id];
+  }
+  model.merges.forEach(({ a, b }, k) => {
+    centre[leaves + k] = (centre[a] + centre[b]) / 2;
+  });
+  const px = (id) => centre[id];
   const py = (id) => depth[id] * rowHeight + 22;
   const current = step > 0 ? model.merges[step - 1] : null;
   const made = leaves + step - 1;
@@ -119,11 +145,9 @@ function drawTree() {
     const onColour = state === "pair" || state === "made" ? "on-colour" : "";
     const weight = isLeaf ? model.symbols[id].count : model.merges[id - leaves].weight;
     if (isLeaf) {
-      const name = label(model.symbols[id].byte);
-      // Long names ("space") keep at least 8px text; their box widens into the gap to hold it.
-      const size =
-        name.length > 2 ? Math.max(8, Math.min(10, (box - 3) / (0.6 * name.length))) : 13;
-      const wide = Math.min(cell - 1, Math.max(box, 0.6 * size * name.length + 4));
+      const name = names[id];
+      // Long names ("space") get a wider box, in a column wide enough to hold it.
+      const wide = Math.min(slot[id] - 1, Math.max(box, need[id]));
       svg.append(
         element("rect", {
           class: `node ${state}`,
@@ -131,7 +155,7 @@ function drawTree() {
           y: py(id) - 14,
           width: wide,
           height: 28,
-          rx: 5,
+          rx: 2,
         }),
       );
       svg.append(
@@ -141,20 +165,18 @@ function drawTree() {
             class: onColour,
             x: px(id),
             y: py(id),
-            // A style, not an attribute, so it wins over the stylesheet's 13px.
-            style: `font-size: ${size.toFixed(1)}px`,
           },
           name,
         ),
       );
-      svg.append(element("text", { class: "count", x: px(id), y: py(id) + 25 }, weight));
+      svg.append(element("text", { class: "count", x: px(id), y: py(id) + 26 }, weight));
     } else {
       svg.append(
         element("circle", {
           class: `node ${state}`,
           cx: px(id),
           cy: py(id),
-          r: Math.min(15, box / 2 + 1),
+          r: Math.max(13, Math.min(16, box / 2 + 2)),
         }),
       );
       svg.append(element("text", { class: onColour, x: px(id), y: py(id) }, weight));
@@ -166,8 +188,8 @@ function drawTree() {
             "text",
             {
               class: "count",
-              x: top ? px(id) + 30 : px(id),
-              y: top ? py(id) : py(id) - 24,
+              x: top ? px(id) + 36 : px(id),
+              y: top ? py(id) : py(id) - 26,
             },
             "new",
           ),
@@ -346,6 +368,8 @@ async function main() {
   $("play").addEventListener("click", play);
   $("position").addEventListener("input", (event) => jump(Number(event.target.value)));
   refresh();
+  // The labels are measured in the page's face, so draw again once it has loaded.
+  document.fonts.ready.then(drawTree);
   // Redraws only when the panel changes width, never while idle.
   let width = $("tree").parentElement.clientWidth;
   new ResizeObserver(() => {
