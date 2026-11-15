@@ -13,72 +13,98 @@
     <a class="skip" href="#main">Skip to content</a>
     <header class="site-header">
       <h1 class="site-title">Huffman coding, step by step</h1>
-      <button id="theme" class="quiet" type="button">Theme: auto</button>
     </header>
     <main id="main">
       <p class="lede">
-        Type some text. The two rarest symbols are joined, again and again, until one tree is left. A symbol's depth
-        in that tree is the length of its code, so common symbols get short codes.
+        Huffman coding swaps each character for a string of 0s and 1s, shorter for common characters, using a tree
+        built by joining the two rarest again and again. Press Play to watch the tree being built for the example
+        text, or Step forward to join one pair at a time.
       </p>
+
+      <section class="panel" aria-labelledby="h-tree">
+        <h2 id="h-tree">Building the tree</h2>
+        <svg id="tree" role="img" aria-labelledby="tree-title"><title id="tree-title">Huffman tree</title></svg>
+        <ul class="legend">
+          <li><span class="swatch outline square"></span>a character, with how many times it appears under it</li>
+          <li><span class="swatch outline"></span>a join, showing the two counts added together</li>
+          <li><span class="swatch" style="color: var(--canvas-compare)"></span>the two rarest, being joined now</li>
+          <li><span class="swatch" style="color: var(--canvas-accent)"></span>the join they form</li>
+        </ul>
+        <div class="row controls">
+          <button id="play" type="button" class="primary">Play</button>
+          <button id="step" type="button">Step forward</button>
+          <button id="back" type="button">Step back</button>
+          <label class="field" for="position">
+            <span id="position-label">Joins done: 0 of 0</span>
+            <input id="position" type="range" min="0" max="0" value="0" step="1" />
+          </label>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
 
       <section class="panel" aria-labelledby="h-text">
         <h2 id="h-text">Text</h2>
         <label class="field" for="text">
-          Text to encode (each UTF-8 byte is one symbol)
+          Text to encode (change it to build a new tree; each character is one symbol, and a letter with an accent
+          counts as two)
           <textarea id="text" rows="2" spellcheck="false" autocomplete="off">she sells sea shells by the sea shore</textarea>
         </label>
         <dl class="totals" id="totals" aria-live="polite"></dl>
       </section>
 
-      <section class="panel" aria-labelledby="h-tree">
-        <h2 id="h-tree">Building the tree</h2>
-        <div class="row controls">
-          <button id="back" type="button">Back</button>
-          <button id="play" type="button" class="primary">Play</button>
-          <button id="step" type="button">Step</button>
-          <label class="field" for="position">
-            <span id="position-label">Merge 0 of 0</span>
-            <input id="position" type="range" min="0" max="0" value="0" step="1" />
-          </label>
+      <section class="panel" aria-labelledby="h-table">
+        <h2 id="h-table">Code table</h2>
+        <p class="note until-done">
+          The codes appear here once the tree is finished. Press Play, or drag "Joins done" to the end.
+        </p>
+        <div class="when-done">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Character</th>
+                <th scope="col">Count</th>
+                <th scope="col">Code length (bits)</th>
+                <th scope="col">Code</th>
+              </tr>
+            </thead>
+            <tbody id="table"></tbody>
+          </table>
+          <p class="note">A character deeper in the tree gets a longer code: its code has one bit per level.</p>
         </div>
-        <p id="status" class="status" aria-live="polite"></p>
-        <div class="scroll-x">
-          <svg id="tree" role="img" aria-labelledby="tree-title"><title id="tree-title">Huffman tree</title></svg>
-        </div>
-        <ul class="legend">
-          <li><span class="swatch" style="color: var(--canvas-compare)"></span>the two lightest nodes, being joined</li>
-          <li><span class="swatch" style="color: var(--canvas-accent)"></span>the node they form</li>
-          <li><span class="swatch outline"></span>not joined yet</li>
-        </ul>
-        <details>
-          <summary>The merges as a list</summary>
-          <ol id="merges" class="merges"></ol>
-        </details>
       </section>
 
-      <div class="grid-2">
-        <section class="panel" aria-labelledby="h-table">
-          <h2 id="h-table">Code table</h2>
-          <div class="scroll-x">
-            <table>
-              <thead>
-                <tr><th scope="col">Symbol</th><th scope="col">Count</th><th scope="col">Bits</th><th scope="col">Code</th></tr>
-              </thead>
-              <tbody id="table"></tbody>
-            </table>
-          </div>
-          <p class="note">
-            The tree only decides how long each code is. The codes are then handed out in order, shortest first
-            (canonical codes), so a decoder can rebuild them from the lengths alone.
-          </p>
-        </section>
-
-        <section class="panel" aria-labelledby="h-bits">
-          <h2 id="h-bits">The bits</h2>
+      <section class="panel" aria-labelledby="h-bits">
+        <h2 id="h-bits">The text as bits</h2>
+        <p class="note until-done">The coded text appears here once the tree is finished.</p>
+        <div class="when-done">
           <ol id="bits" class="bits"></ol>
           <p id="bits-note" class="note"></p>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <details class="panel">
+        <summary>More figures: the lower limit and the size as a file</summary>
+        <dl class="totals" id="more-totals"></dl>
+        <p class="note">
+          The lower limit (the entropy) is the fewest bits any code that handles one character at a time could use
+          for this text. The file adds a table of code lengths and checksums so the text can be decoded and
+          checked.
+        </p>
+      </details>
+
+      <details class="panel">
+        <summary>How the codes are handed out</summary>
+        <p class="note">
+          The tree only decides how long each code is. The codes are then handed out in order, shortest first
+          (canonical codes), so a decoder can rebuild them from the lengths alone. No code is the start of another,
+          so the bits need no separators.
+        </p>
+      </details>
+
+      <details class="panel">
+        <summary>The joins as a list</summary>
+        <ol id="merges" class="merges"></ol>
+      </details>
     </main>
     <footer class="site-footer">
       Computed by the same Rust code as the command line tool, compiled to WebAssembly. Nothing leaves this page.

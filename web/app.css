@@ -24,6 +24,7 @@ textarea {
 
 .totals dd {
   margin: 0;
+  font-variant-numeric: lining-nums tabular-nums;
   font-family: var(--mono);
   font-size: var(--text-md);
 }
@@ -44,10 +45,12 @@ textarea {
 }
 
 #tree {
-  /* Keeps its size and scrolls sideways inside the panel on a narrow screen. */
-  max-width: none;
+  /* Scales down to the panel's width on a narrow screen; app.js caps it at its own size. */
+  width: 100%;
+  height: auto;
   margin: 0 auto;
   font-family: var(--mono);
+  font-variant-numeric: lining-nums;
 }
 
 #tree .edge {
@@ -95,16 +98,28 @@ textarea {
 .swatch.outline {
   background: transparent;
   border: 1.5px solid var(--canvas-muted);
+  border-radius: 50%;
+}
+
+.swatch.outline.square {
+  border-radius: 2px;
+}
+
+.controls {
+  margin-top: var(--space-4);
 }
 
 details {
-  margin-top: var(--space-3);
   font-size: var(--text-sm);
 }
 
 summary {
   cursor: pointer;
-  color: var(--muted);
+  font-weight: 500;
+}
+
+details > :not(summary) {
+  margin-top: var(--space-3);
 }
 
 .merges {
@@ -133,8 +148,15 @@ th:last-child {
   text-align: left;
 }
 
+/* Headings wrap so the table fits a phone without scrolling sideways. */
+th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+
 .bits {
   display: flex;
+  font-variant-numeric: lining-nums;
   margin: 0;
   padding: 0;
   list-style: none;

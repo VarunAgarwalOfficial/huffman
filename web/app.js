@@ -1,5 +1,5 @@
 // Demo page: all Huffman logic runs in huffman.wasm (the Rust library); this file only draws.
-import { initTheme } from "./theme.js";
+// The host page follows the system colour scheme, so there is no theme button here.
 
 const $ = (id) => document.getElementById(id);
 const SVG = "http://www.w3.org/2000/svg";
@@ -37,7 +37,7 @@ function label(byte) {
 function nodeName(id) {
   const leaves = model.symbols.length;
   if (id < leaves) return `${label(model.symbols[id].byte)} (${model.symbols[id].count})`;
-  return `node ${id - leaves + 1} (${model.merges[id - leaves].weight})`;
+  return `the circle holding ${model.merges[id - leaves].weight}`;
 }
 
 /** Fixed positions for every node of the finished tree: root at the top, depth going down. */
@@ -76,13 +76,17 @@ function drawTree() {
   for (const child of [...svg.children]) if (child.tagName !== "title") child.remove();
   const leaves = model.symbols.length;
   const { x, depth, deepest } = layout();
-  const cell = 46;
-  const rowHeight = 58;
+  // Narrow screens get narrower columns drawn at full size, so the labels stay readable.
+  // Only a tree with very many leaves is scaled down to fit.
+  const room = svg.parentElement.clientWidth - 2;
+  const cell = Math.max(28, Math.min(46, Math.floor(room / Math.max(leaves, 1))));
+  const box = cell - 8;
+  const rowHeight = Math.round(cell * 1.26);
   const width = Math.max(leaves, 1) * cell;
   const tall = (deepest + 1) * rowHeight + 16;
   svg.setAttribute("viewBox", `0 0 ${width} ${tall}`);
-  svg.setAttribute("width", width);
-  svg.setAttribute("height", tall);
+  // Shrinks to fit a narrow screen instead of being cut off; never grows past its own size.
+  svg.style.maxWidth = `${width}px`;
   const px = (id) => x[id] * cell + cell / 2;
   const py = (id) => depth[id] * rowHeight + 22;
   const current = step > 0 ? model.merges[step - 1] : null;
@@ -115,28 +119,60 @@ function drawTree() {
     const onColour = state === "pair" || state === "made" ? "on-colour" : "";
     const weight = isLeaf ? model.symbols[id].count : model.merges[id - leaves].weight;
     if (isLeaf) {
+      const name = label(model.symbols[id].byte);
+      // Long names ("space") keep at least 8px text; their box widens into the gap to hold it.
+      const size =
+        name.length > 2 ? Math.max(8, Math.min(10, (box - 3) / (0.6 * name.length))) : 13;
+      const wide = Math.min(cell - 1, Math.max(box, 0.6 * size * name.length + 4));
       svg.append(
         element("rect", {
           class: `node ${state}`,
-          x: px(id) - 19,
+          x: px(id) - wide / 2,
           y: py(id) - 14,
-          width: 38,
+          width: wide,
           height: 28,
           rx: 5,
         }),
       );
-      const name = label(model.symbols[id].byte);
       svg.append(
         element(
           "text",
-          { class: onColour, x: px(id), y: py(id), "font-size": name.length > 2 ? 10 : 13 },
+          {
+            class: onColour,
+            x: px(id),
+            y: py(id),
+            // A style, not an attribute, so it wins over the stylesheet's 13px.
+            style: `font-size: ${size.toFixed(1)}px`,
+          },
           name,
         ),
       );
       svg.append(element("text", { class: "count", x: px(id), y: py(id) + 25 }, weight));
     } else {
-      svg.append(element("circle", { class: `node ${state}`, cx: px(id), cy: py(id), r: 15 }));
+      svg.append(
+        element("circle", {
+          class: `node ${state}`,
+          cx: px(id),
+          cy: py(id),
+          r: Math.min(15, box / 2 + 1),
+        }),
+      );
       svg.append(element("text", { class: onColour, x: px(id), y: py(id) }, weight));
+      if (state === "made") {
+        // Above the circle, or beside it for the top of the tree, where there is no room above.
+        const top = depth[id] === 0;
+        svg.append(
+          element(
+            "text",
+            {
+              class: "count",
+              x: top ? px(id) + 30 : px(id),
+              y: top ? py(id) : py(id) - 24,
+            },
+            "new",
+          ),
+        );
+      }
     }
   }
   const done = step === model.merges.length;
@@ -147,7 +183,7 @@ function drawTree() {
 
 function drawStatus() {
   const total = model.merges.length;
-  $("position-label").textContent = `Merge ${step} of ${total}`;
+  $("position-label").textContent = `Joins done: ${step} of ${total}`;
   $("position").max = total;
   $("position").value = step;
   let text;
@@ -156,11 +192,13 @@ function drawStatus() {
     text =
       "Only one distinct symbol, so there is nothing to merge. It still gets a one-bit code, so that every symbol costs a bit.";
   else if (step === 0)
-    text = `Start: ${model.symbols.length} symbols, each a tree of its own, weighted by its count.`;
+    text = `Nothing has run yet. Each of the ${model.symbols.length} different characters in the text is a box with its count under it, placed at the height it will have in the finished tree. Press Play or Step forward to join the two rarest.`;
   else {
     const { a, b, weight } = model.merges[step - 1];
-    text = `Merge ${step}: the two lightest are ${nodeName(a)} and ${nodeName(b)}. Join them under a new node of weight ${weight}.`;
-    if (step === total) text += " One tree is left: done.";
+    text = `Join ${step} of ${total}: the two rarest left are ${nodeName(a)} and ${nodeName(b)}, so they are joined under a new circle holding their total, ${weight}.`;
+    if (step === total)
+      text +=
+        " One tree is left, so it is finished. Each character's code length is how many levels down it sits.";
   }
   $("status").textContent = text;
   for (const [id, off] of [
@@ -170,6 +208,10 @@ function drawStatus() {
   ]) {
     $(id).setAttribute("aria-disabled", String(off));
   }
+  const done = total > 0 && step === total;
+  for (const node of document.querySelectorAll(".when-done")) node.hidden = !done && total > 0;
+  for (const node of document.querySelectorAll(".until-done")) node.hidden = done || total === 0;
+  drawTotals(done || total === 0);
   [...$("merges").children].forEach((item, k) => {
     item.className = k < step ? "" : "pending";
     if (k === step - 1) item.setAttribute("aria-current", "step");
@@ -225,15 +267,15 @@ function drawStatic() {
         ? `Showing the first ${MAX_SHOWN} of ${bytes} symbols. Each group is one symbol: its code above, the symbol below.`
         : "Each group is one symbol: its code above, the symbol below. No code is the start of another, so no separators are needed.";
 
-  const plain = bytes * 8;
-  const figures = [
-    ["Plain", `${plain} bits`],
-    ["Huffman code words", `${model.payloadBits} bits`],
-    ["Entropy bound", `${(model.entropy * bytes).toFixed(1)} bits`],
-    ["Average code", bytes ? `${model.average.toFixed(3)} bits/symbol` : "n/a"],
+  fill("more-totals", [
+    ["Lower limit (entropy)", `${(model.entropy * bytes).toFixed(1)} bits`],
     ["As a file", `${model.containerBytes} bytes (${model.overheadBytes} are table and checksums)`],
-  ];
-  $("totals").replaceChildren(
+  ]);
+}
+
+/** Fills a list of figures: each is a term and its value. */
+function fill(id, figures) {
+  $(id).replaceChildren(
     ...figures.map(([term, value]) => {
       const box = document.createElement("div");
       const dt = document.createElement("dt");
@@ -244,6 +286,20 @@ function drawStatic() {
       return box;
     }),
   );
+}
+
+/** The headline sizes. The coded size is only known once the tree is finished. */
+function drawTotals(done) {
+  const { bytes } = model;
+  const waiting = "when the tree is finished";
+  fill("totals", [
+    ["Plain, 8 bits per character", `${bytes * 8} bits`],
+    ["Huffman coded", done ? `${model.payloadBits} bits` : waiting],
+    [
+      "Average code length",
+      done ? (bytes ? `${model.average.toFixed(2)} bits per character` : "none") : waiting,
+    ],
+  ]);
 }
 
 function stop() {
@@ -264,8 +320,8 @@ function refresh() {
   input = encoder.encode($("text").value);
   model = analyze(input);
   drawStatic();
-  // Show the finished tree first; Play rebuilds it from the start.
-  go(model.merges.length);
+  // Start before the first join: nothing is shown finished until it has been built.
+  go(0);
 }
 
 function play() {
@@ -278,7 +334,6 @@ function play() {
 }
 
 async function main() {
-  initTheme($("theme"));
   const { instance } = await WebAssembly.instantiateStreaming(fetch("huffman.wasm"));
   wasm = instance.exports;
   $("text").addEventListener("input", refresh);
@@ -291,6 +346,15 @@ async function main() {
   $("play").addEventListener("click", play);
   $("position").addEventListener("input", (event) => jump(Number(event.target.value)));
   refresh();
+  // Redraws only when the panel changes width, never while idle.
+  let width = $("tree").parentElement.clientWidth;
+  new ResizeObserver(() => {
+    const now = $("tree").parentElement.clientWidth;
+    if (now !== width) {
+      width = now;
+      drawTree();
+    }
+  }).observe($("tree").parentElement);
 }
 
 main().catch((error) => {
