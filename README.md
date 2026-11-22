@@ -266,5 +266,9 @@ scripts/bench.sh  comparison with gzip
 
 ## Credit
 
-Based on a data structures course project by Varun Agarwal and Shreya Atul
-Sharma: C version 2020, Python rewrite 2021.
+Based on a VIT group course project for CSE2003 Data Structures and Algorithms: a C version
+in 2020 and a Python rewrite, [CSE2003-Huffman-Coding](https://github.com/VarunAgarwalOfficial/CSE2003-Huffman-Coding).
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
