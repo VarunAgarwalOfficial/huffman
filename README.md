@@ -118,7 +118,7 @@ Huffman-codes the result. Nothing here sees that "the" follows a space.
 Huffman alone encodes faster, and that is the only thing it wins. `random.bin`
 is 1 MiB from `/dev/urandom`: neither tool can shrink it.
 
-## Run
+## Run it
 
 Needs a Rust toolchain (1.88 or newer).
 
@@ -268,6 +268,10 @@ scripts/bench.sh  comparison with gzip
 
 Based on a VIT group course project for CSE2003 Data Structures and Algorithms: a C version
 in 2020 and a Python rewrite, [CSE2003-Huffman-Coding](https://github.com/VarunAgarwalOfficial/CSE2003-Huffman-Coding).
+
+## Status
+
+Working, as of 26 November 2026. See [STATUS.md](STATUS.md).
 
 ## Licence
 
