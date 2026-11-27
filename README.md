@@ -1,6 +1,11 @@
-# huffman
+<p align="center"><img src="docs/banner.png" alt="Pixel art: a code tree with 0 and 1 branches and sunflowers as leaves" width="100%"></p>
 
-A Huffman coder for arbitrary files, written in Rust with no dependencies.
+# Huffman
+
+Huffman file compressor in Rust with CRC-32 checks and a web page that shows the code tree being built.
+
+[MIT licence](LICENSE)
+
 It compresses and decompresses files of any size in a few megabytes of
 memory, checks what it reads with CRC-32, and can show the code it built:
 the table of symbols, the tree, and how close the result is to the entropy
