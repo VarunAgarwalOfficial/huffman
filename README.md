@@ -231,7 +231,8 @@ oxblood accent for links and focus only, Newsreader for text and the tree's
 labels, IBM Plex Mono for code, CM Web Serif for mathematics, the site's
 sizes (17, 20, 22 and 28 px, and the title), spacing, measure, rules and focus
 ring. The token file asks for its fonts at `/fonts/`, so serve `web/` as the
-site root (as above) or from the website. The fonts and their licences
+site root (as above) or from the website. The Pages workflow
+rewrites them to `fonts/` in the copy it publishes. The fonts and their licences
 (`Newsreader-OFL.txt`, `IBM-Plex-OFL.txt`, `GUST-FONT-LICENSE.txt`,
 `LPPL-1.3c.txt`, `NewCM-License.txt`) are in `web/fonts/`.
 
