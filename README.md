@@ -8,6 +8,20 @@ bound. A small browser page builds the tree step by step for typed text.
 
 ![The demo page: a merge in progress, the code table and the bits](docs/screenshot.png)
 
+## Results
+
+- **A 1 GiB file in 3.9 s to encode and 3.3 s to decode, in 4.7 MiB of memory.** The first
+  version needed 644 MiB for a quarter of that.
+- **Within one bit of the entropy bound**, as the theory guarantees, and `inspect` shows the gap
+  for any input.
+- **Every block is checked with CRC-32** before it is written, so a damaged file never produces
+  wrong bytes.
+- Measured honestly against gzip on the Canterbury corpus: gzip makes files 1.6 to 2.2 times
+  smaller, and this coder encodes faster ([table](#compared-with-gzip)).
+
+**Stack:** Rust with no dependencies, a command line with shell completions; the same library
+compiled to WebAssembly for a plain JavaScript page.
+
 ## The idea
 
 This started as a data structures course project at university. The lecture
