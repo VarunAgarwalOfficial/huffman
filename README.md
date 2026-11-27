@@ -4,7 +4,7 @@
 
 Huffman file compressor in Rust with CRC-32 checks and a web page that shows the code tree being built.
 
-[Live demo](https://varunagarwalofficial.github.io/huffman/) · [MIT licence](LICENSE)
+[Live demo](https://varunswaika.github.io/huffman/) · [MIT licence](LICENSE)
 
 It compresses and decompresses files of any size in a few megabytes of
 memory, checks what it reads with CRC-32, and can show the code it built:
@@ -287,7 +287,7 @@ scripts/bench.sh  comparison with gzip
 ## Credit
 
 Based on a VIT group course project for CSE2003 Data Structures and Algorithms: a C version
-in 2020 and a Python rewrite, [CSE2003-Huffman-Coding](https://github.com/VarunAgarwalOfficial/CSE2003-Huffman-Coding).
+in 2020 and a Python rewrite, [CSE2003-Huffman-Coding](https://github.com/varunswaika/CSE2003-Huffman-Coding).
 
 ## Status
 
