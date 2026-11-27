@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.png" alt="Pixel art: a code tree with 0 and 1 branches and sunflowers as leaves" width="100%"></p>
+<p align="center"><img src="docs/banner.png" alt="Pixel art: a Huffman tree with 0 and 1 on its branches and the letters of huffman at its leaves" width="100%"></p>
 
 # Huffman
 
