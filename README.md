@@ -12,8 +12,8 @@ bound. A small browser page builds the tree step by step for typed text.
 
 - **A 1 GiB file in 3.9 s to encode and 3.3 s to decode, in 4.7 MiB of memory.** The first
   version needed 644 MiB for a quarter of that.
-- **Within one bit of the entropy bound**, as the theory guarantees, and `inspect` shows the gap
-  for any input.
+- **At most one bit a symbol above the entropy**, as the theory guarantees, and `inspect` shows
+  the gap for any input.
 - **Every block is checked with CRC-32** before it is written, so a damaged file never produces
   wrong bytes.
 - Measured honestly against gzip on the Canterbury corpus: gzip makes files 1.6 to 2.2 times
