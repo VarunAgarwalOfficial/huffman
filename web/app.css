@@ -44,71 +44,65 @@ textarea {
   font-size: var(--text-sm);
 }
 
-#tree {
-  /* Scales down to the panel's width on a narrow screen; app.js caps it at its own size. */
-  width: 100%;
-  height: auto;
+/* The tree: a pixel canvas at a whole-number scale, with the labels as page text over it. */
+.tree-wrap {
+  overflow: auto hidden;
+  margin: var(--space-4) 0 0;
+}
+
+.tree {
+  position: relative;
   margin: 0 auto;
   font-family: var(--font);
-  font-variant-numeric: lining-nums tabular-nums;
-}
-
-#tree .edge {
-  stroke: var(--canvas-muted);
-  stroke-width: 1.5;
-}
-
-#tree .node {
-  fill: var(--canvas-bg);
-  stroke: var(--canvas-muted);
-  stroke-width: 1.5;
-}
-
-#tree .node.old {
-  stroke: var(--canvas-ink);
-}
-
-#tree .node.pair {
-  fill: var(--canvas-compare);
-  stroke: var(--canvas-compare);
-}
-
-#tree .node.made {
-  fill: var(--canvas-accent);
-  stroke: var(--canvas-accent);
-}
-
-#tree text {
-  fill: var(--canvas-ink);
   font-size: var(--site-step--1);
-  text-anchor: middle;
-  dominant-baseline: central;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
 }
 
-#tree text.on-colour {
-  fill: var(--canvas-bg);
+.tree canvas {
+  display: block;
+  max-width: none;
+  image-rendering: pixelated;
 }
 
-#tree text.count {
-  fill: var(--canvas-muted);
+.tree .tag {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: var(--canvas-ink);
+  pointer-events: none;
 }
 
-.swatch.outline {
-  background: transparent;
-  border: 1.5px solid var(--canvas-muted);
-  border-radius: 50%;
+.tree .tag.on-colour {
+  color: var(--site-color-bg);
 }
 
-.swatch.outline.square {
-  border-radius: 0;
+.tree .tag.count {
+  color: var(--canvas-muted);
 }
 
-.swatch.round {
-  border-radius: 50%;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Scene colours from pixel.js: meadow, leaf, wood 2 and wood 6. */
+.swatch.leaf {
+  background: var(--px-meadow);
+  border: 3px solid var(--px-meadow-deep);
+}
+
+.swatch.knot {
+  background: #e0b07a;
+  border: 3px solid #5e3e24;
 }
 
 .controls {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 details {

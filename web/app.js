@@ -1,8 +1,16 @@
 // Demo page: all Huffman logic runs in huffman.wasm (the Rust library); this file only draws.
-// The host page follows the system colour scheme, so there is no theme button here.
+// The tree is drawn as a small pixel tree: the root is the trunk on the ground, joins are knots
+// on the branches and characters are leaves at the top. Labels are page text over the canvas.
+
+import {
+  dither,
+  PALETTE as P,
+  setupCanvas,
+} from "https://varunswaika.github.io/varun-ui/shell/pixel.js";
 
 const $ = (id) => document.getElementById(id);
-const SVG = "http://www.w3.org/2000/svg";
+// One art pixel is this many CSS pixels, the shell's --px-u.
+const UNIT = 3;
 const MAX_SHOWN = 400;
 // Labels in the tree are set in the page's text face at the site's small size, never smaller.
 const SMALL = 17;
@@ -40,10 +48,10 @@ function label(byte) {
 function nodeName(id) {
   const leaves = model.symbols.length;
   if (id < leaves) return `${label(model.symbols[id].byte)} (${model.symbols[id].count})`;
-  return `the circle holding ${model.merges[id - leaves].weight}`;
+  return `the knot holding ${model.merges[id - leaves].weight}`;
 }
 
-/** Fixed positions for every node of the finished tree: root at the top, depth going down. */
+/** Fixed positions for every node of the finished tree: root on the ground, depth going up. */
 function layout() {
   const leaves = model.symbols.length;
   const total = leaves + model.merges.length;
@@ -73,66 +81,185 @@ function textWidth(text) {
   return measure.measureText(text).width;
 }
 
-function element(name, attributes, text) {
-  const node = document.createElementNS(SVG, name);
-  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
-  if (text !== undefined) node.textContent = text;
-  return node;
+/** A line of square stamps from (x0, y0) to (x1, y1), in art pixels. */
+function line(g, x0, y0, x1, y1, size, colour) {
+  g.fillStyle = colour;
+  const dx = Math.abs(x1 - x0);
+  const dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  const half = Math.floor(size / 2);
+  let err = dx + dy;
+  for (;;) {
+    g.fillRect(x0 - half, y0 - half, size, size);
+    if (x0 === x1 && y0 === y1) return;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x0 += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+}
+
+/** A box with its corners cut, filled and outlined, centred on (x, y). */
+function blob(g, x, y, w, h, fill, edge, round = 1) {
+  // Odd sizes, so the shape is centred on the pixel (x, y).
+  w |= 1;
+  h |= 1;
+  const left = x - (w >> 1);
+  const top = y - (h >> 1);
+  g.fillStyle = edge;
+  g.fillRect(left + round, top, w - 2 * round, h);
+  g.fillRect(left, top + round, w, h - 2 * round);
+  if (round > 1) {
+    g.fillRect(left + 1, top + 1, w - 2, h - 2);
+  }
+  g.fillStyle = fill;
+  g.fillRect(left + round, top + 1, w - 2 * round, h - 2);
+  g.fillRect(left + 1, top + round, w - 2, h - 2 * round);
+  return { left, top, w, h };
+}
+
+/** A leaf: a green clump with a lighter top and a few darker pixels low down. */
+function leaf(g, x, y, w, h, state) {
+  const fill = state === "pair" ? P.measured : state === "old" ? P.meadow : P.meadowSoft;
+  const edge = state === "pair" ? P.sunflowerDeep : state === "old" ? P.leaf : P.meadowMid;
+  const box = blob(g, x, y, w, h, fill, edge, 2);
+  // A short stem under the leaf, and a light streak along its top edge.
+  g.fillStyle = edge;
+  g.fillRect(x, box.top + box.h, 1, 1);
+  if (state === "pair") return;
+  g.fillStyle = state === "old" ? P.meadowSoft : P.plate;
+  g.fillRect(box.left + 3, box.top + 1, Math.max(1, box.w - 8), 1);
+}
+
+/** A join: a knot of wood on the branch. */
+function knot(g, x, y, w, h, state) {
+  const fills = { pair: P.measured, made: P.open, old: P.wood2, "": P.wood1 };
+  const edges = { pair: P.sunflowerDeep, made: P.inkDeep, old: P.wood6, "": P.wood4 };
+  const box = blob(g, x, y, w, h, fills[state], edges[state]);
+  if (state === "old" || state === "") {
+    g.fillStyle = state === "old" ? P.wood3 : P.wood2;
+    g.fillRect(box.left + 2, box.top + box.h - 2, box.w - 4, 1);
+  }
+}
+
+/** The ground: flat grass with a light dither, two tufts and a stone, all placed by hand. */
+function ground(g, width, top, height) {
+  g.fillStyle = P.meadow;
+  g.fillRect(0, top, width, height);
+  g.fillStyle = P.meadowMid;
+  g.fillRect(0, top, width, 1);
+  dither(g, 0, top + 2, width, height - 2, P.meadowMid, 0.1);
+  const tuft = (x) => {
+    g.fillStyle = P.leaf;
+    g.fillRect(x, top - 2, 1, 2);
+    g.fillRect(x + 2, top - 3, 1, 3);
+    g.fillRect(x + 4, top - 1, 1, 1);
+  };
+  tuft(Math.round(width * 0.13));
+  tuft(Math.round(width * 0.68));
+  const stone = Math.round(width * 0.87);
+  g.fillStyle = P.stone3;
+  g.fillRect(stone, top - 2, 4, 2);
+  g.fillStyle = P.stone2;
+  g.fillRect(stone + 1, top - 3, 2, 1);
+}
+
+/** A label in the page's text face, over the canvas at art position (x, y). */
+function tag(stage, text, x, y, kind) {
+  const span = document.createElement("span");
+  span.className = `tag ${kind}`;
+  span.textContent = text;
+  // The middle of art pixel (x, y).
+  span.style.left = `${(x + 0.5) * UNIT}px`;
+  span.style.top = `${(y + 0.5) * UNIT}px`;
+  stage.append(span);
 }
 
 function drawTree() {
-  const svg = $("tree");
-  for (const child of [...svg.children]) if (child.tagName !== "title") child.remove();
+  const stage = $("tree");
+  for (const child of [...stage.querySelectorAll(".tag")]) child.remove();
+  const canvas = stage.querySelector("canvas");
   const leaves = model.symbols.length;
   const { x, depth, deepest } = layout();
-  // Narrow screens get narrower columns drawn at full size, so the labels stay readable.
-  // A column is never narrower than its label ("space" needs more room than "e"); only a
-  // tree with very many leaves is scaled down to fit.
-  const room = svg.parentElement.clientWidth - 2;
+  // Columns are sized in CSS pixels so every label fits at full size; a column is never
+  // narrower than its label ("space" needs more room than "e"). A tree too wide for the panel
+  // scrolls sideways rather than shrinking its labels.
+  const room = stage.parentElement.clientWidth - 2;
   const names = model.symbols.map((symbol) => label(symbol.byte));
-  const need = names.map((name) => Math.ceil(textWidth(name)) + 16);
-  let cell = Math.max(28, Math.min(46, Math.floor(room / Math.max(leaves, 1))));
-  // Every box keeps at least 8 px from its neighbours.
-  const slots = (c) => need.map((n) => Math.max(c, n + 8));
+  const need = names.map((name) => Math.ceil(textWidth(name)) + 12);
+  let cell = Math.max(27, Math.min(48, Math.floor(room / Math.max(leaves, 1))));
+  // Every leaf keeps at least 6 px from its neighbours.
+  const slots = (c) => need.map((n) => Math.max(c, n + 6));
   let slot = slots(cell);
   const sum = (list) => list.reduce((a, b) => a + b, 0);
   while (sum(slot) > room && cell > 24) slot = slots(--cell);
-  const box = cell - 8;
-  const rowHeight = Math.max(46, Math.round(cell * 1.26));
-  const width = Math.max(sum(slot), cell);
-  const tall = (deepest + 1) * rowHeight + 26;
-  svg.setAttribute("viewBox", `0 0 ${width} ${tall}`);
-  // Shrinks to fit a narrow screen instead of being cut off; never grows past its own size.
-  svg.style.maxWidth = `${width}px`;
-  // Leaves sit left to right in tree order, each in its own column; a join sits midway over its two.
+  // From here on everything is in art pixels.
+  const art = (css) => Math.round(css / UNIT);
+  const row = 16;
+  const groundHeight = 9;
+  const width = Math.max(art(sum(slot)), 40);
+  const tall = 36 + deepest * row;
+  const groundTop = tall - groundHeight;
+  const rootY = groundTop - 13;
+  const g = setupCanvas(canvas, width, tall, UNIT);
+  stage.style.width = `${width * UNIT}px`;
+  g.clearRect(0, 0, width, tall);
+
   const centre = new Array(leaves + model.merges.length).fill(0);
   let left = 0;
   for (const id of [...Array(leaves).keys()].sort((a, b) => x[a] - x[b])) {
-    centre[id] = left + slot[id] / 2;
+    centre[id] = art(left + slot[id] / 2);
     left += slot[id];
   }
   model.merges.forEach(({ a, b }, k) => {
-    centre[leaves + k] = (centre[a] + centre[b]) / 2;
+    centre[leaves + k] = Math.round((centre[a] + centre[b]) / 2);
   });
   const px = (id) => centre[id];
-  const py = (id) => depth[id] * rowHeight + 22;
+  const py = (id) => rootY - depth[id] * row;
   const current = step > 0 ? model.merges[step - 1] : null;
   const made = leaves + step - 1;
+  const total = leaves + model.merges.length;
+  const weightOf = (id) =>
+    id < leaves ? model.symbols[id].count : model.merges[id - leaves].weight;
+  const heaviest = Math.max(1, ...Array.from({ length: total }, (_, id) => weightOf(id)));
+  const thickness = (id) => 1 + Math.round((2 * weightOf(id)) / heaviest);
+  const done = leaves > 0 && step === model.merges.length;
 
+  ground(g, width, groundTop, groundHeight);
+  // The trunk, once the tree is one piece: from the root down into the ground, with roots.
+  if (done) {
+    const root = total - 1;
+    const tx = px(root);
+    for (let y = py(root); y < groundTop + 1; y++) {
+      g.fillStyle = P.wood4;
+      g.fillRect(tx - 2, y, 4, 1);
+      g.fillStyle = P.wood5;
+      g.fillRect(tx + 1, y, 1, 1);
+    }
+    g.fillStyle = P.wood5;
+    g.fillRect(tx - 4, groundTop, 2, 1);
+    g.fillRect(tx + 2, groundTop, 3, 1);
+    g.fillRect(tx - 5, groundTop + 1, 1, 1);
+    g.fillRect(tx + 5, groundTop + 1, 1, 1);
+  }
+  // Branches, each as thick as the share of the text it carries, with a darker side.
   for (let k = 0; k < step; k++) {
     const { a, b } = model.merges[k];
     for (const child of [a, b]) {
-      svg.append(
-        element("line", {
-          class: "edge",
-          x1: px(leaves + k),
-          y1: py(leaves + k),
-          x2: px(child),
-          y2: py(child),
-        }),
-      );
+      const size = thickness(child);
+      const x0 = px(leaves + k);
+      const y0 = py(leaves + k);
+      line(g, x0 + 1, y0, px(child) + 1, py(child) + 5, size, P.wood5);
+      line(g, x0, y0, px(child), py(child) + 5, size, P.wood4);
     }
   }
+
   for (let id = 0; id < leaves + step; id++) {
     const isLeaf = id < leaves;
     const state =
@@ -144,61 +271,24 @@ function drawTree() {
             ? "old"
             : "";
     const onColour = state === "pair" || state === "made" ? "on-colour" : "";
-    const weight = isLeaf ? model.symbols[id].count : model.merges[id - leaves].weight;
+    const weight = weightOf(id);
     if (isLeaf) {
-      const name = names[id];
-      // Long names ("space") get a wider box, in a column wide enough to hold it.
-      const wide = Math.min(slot[id] - 8, Math.max(box, need[id]));
-      svg.append(
-        element("rect", {
-          class: `node ${state}`,
-          x: px(id) - wide / 2,
-          y: py(id) - 14,
-          width: wide,
-          height: 28,
-          rx: 2,
-        }),
-      );
-      svg.append(
-        element(
-          "text",
-          {
-            class: onColour,
-            x: px(id),
-            y: py(id),
-          },
-          name,
-        ),
-      );
-      svg.append(element("text", { class: "count", x: px(id), y: py(id) + 26 }, weight));
+      // Long names ("space") get a wider leaf, in a column wide enough to hold it.
+      const wide = Math.min(art(slot[id]) - 3, Math.max(art(cell) - 3, art(need[id])));
+      leaf(g, px(id), py(id), wide, 11, state);
+      tag(stage, names[id], px(id), py(id), onColour);
+      tag(stage, weight, px(id), py(id) - 9, "count");
     } else {
-      svg.append(
-        element("circle", {
-          class: `node ${state}`,
-          cx: px(id),
-          cy: py(id),
-          r: Math.max(13, Math.min(16, box / 2 + 2)),
-        }),
-      );
-      svg.append(element("text", { class: onColour, x: px(id), y: py(id) }, weight));
+      const wide = Math.max(10, art(textWidth(String(weight)) + 14));
+      knot(g, px(id), py(id), wide, 9, state);
+      tag(stage, weight, px(id), py(id), onColour);
       if (state === "made") {
-        // Above the circle, or beside it for the top of the tree, where there is no room above.
-        const top = depth[id] === 0;
-        svg.append(
-          element(
-            "text",
-            {
-              class: "count",
-              x: top ? px(id) + 36 : px(id),
-              y: top ? py(id) : py(id) - 26,
-            },
-            "new",
-          ),
-        );
+        // Below the knot, where its own parent will go; for the root, beside the trunk.
+        const side = depth[id] === 0 ? Math.ceil(art(textWidth("new")) / 2) + 4 : 0;
+        tag(stage, "new", px(id) + side, py(id) + 9, "count");
       }
     }
   }
-  const done = step === model.merges.length;
   $("tree-title").textContent = done
     ? `Finished Huffman tree with ${leaves} leaves`
     : `Huffman tree after ${step} of ${model.merges.length} merges`;
@@ -215,13 +305,13 @@ function drawStatus() {
     text =
       "Only one distinct symbol, so there is nothing to merge. It still gets a one-bit code, so that every symbol costs a bit.";
   else if (step === 0)
-    text = `Nothing has run yet. Each of the ${model.symbols.length} different characters in the text is a box with its count under it, placed at the height it will have in the finished tree. Press Play or Step forward to join the two rarest.`;
+    text = `Nothing has run yet. Each of the ${model.symbols.length} different characters in the text is a leaf with its count above it, placed at the height it will have in the finished tree. Press Play or Step forward to join the two rarest.`;
   else {
     const { a, b, weight } = model.merges[step - 1];
-    text = `Join ${step} of ${total}: the two rarest left are ${nodeName(a)} and ${nodeName(b)}, so they are joined under a new circle holding their total, ${weight}.`;
+    text = `Join ${step} of ${total}: the two rarest left are ${nodeName(a)} and ${nodeName(b)}, so they are joined on a new knot holding their total, ${weight}.`;
     if (step === total)
       text +=
-        " One tree is left, so it is finished. Each character's code length is how many levels down it sits.";
+        " One tree is left, so it is finished. Each character's code length is how many levels up from the trunk it sits.";
   }
   $("status").textContent = text;
   for (const [id, off] of [

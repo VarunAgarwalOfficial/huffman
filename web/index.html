@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Huffman coding, step by step</title>
     <meta name="description" content="Type text and watch a Huffman tree being built, then see the bits." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v4M8 7L4 12M8 7l4 5' stroke='%23211f1c' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='8' cy='3' r='2' fill='%23211f1c'/%3E%3C/svg%3E" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fffbf0" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath d='M3 2h4v3H3zM9 2h4v3H9z' fill='%236f9e3a'/%3E%3Cpath d='M5 5h1v3h4V5h1v4H8v5H7V9H5z' fill='%23a8703f'/%3E%3Cpath d='M2 14h12v1H2z' fill='%238fc25a'/%3E%3C/svg%3E" />
+    <meta name="project" content="huffman" />
+    <meta name="project-title" content="Huffman coding" />
+    <link rel="stylesheet" href="https://varunswaika.github.io/varun-ui/shell/shell.css" />
+    <script type="module" src="https://varunswaika.github.io/varun-ui/shell/shell.js"></script>
     <link rel="stylesheet" href="base.css" />
     <link rel="stylesheet" href="app.css" />
   </head>
@@ -23,13 +29,6 @@
 
       <section class="panel" aria-labelledby="h-tree">
         <h2 id="h-tree">Building the tree</h2>
-        <svg id="tree" role="img" aria-labelledby="tree-title"><title id="tree-title">Huffman tree</title></svg>
-        <ul class="legend">
-          <li><span class="swatch outline square"></span>a character, with how many times it appears under it</li>
-          <li><span class="swatch outline"></span>a join, showing the two counts added together</li>
-          <li><span class="swatch" style="color: var(--canvas-compare)"></span>the two rarest, being joined now</li>
-          <li><span class="swatch round" style="color: var(--canvas-accent)"></span>the join they form</li>
-        </ul>
         <div class="row controls">
           <button id="play" type="button" class="primary">Play</button>
           <button id="step" type="button">Step forward</button>
@@ -39,6 +38,18 @@
             <input id="position" type="range" min="0" max="0" value="0" step="1" />
           </label>
         </div>
+        <div class="tree-wrap">
+          <div id="tree" class="tree" role="img" aria-labelledby="tree-title">
+            <canvas aria-hidden="true"></canvas>
+            <span id="tree-title" class="visually-hidden">Huffman tree</span>
+          </div>
+        </div>
+        <ul class="legend">
+          <li><span class="swatch leaf"></span>a character, a leaf with its count above it</li>
+          <li><span class="swatch knot"></span>a join, a knot holding the two counts added together</li>
+          <li><span class="swatch" style="color: var(--canvas-compare)"></span>the two rarest, being joined now</li>
+          <li><span class="swatch" style="color: var(--canvas-accent)"></span>the join they form</li>
+        </ul>
         <p id="status" class="status" aria-live="polite"></p>
       </section>
 
@@ -69,7 +80,7 @@
             </thead>
             <tbody id="table"></tbody>
           </table>
-          <p class="note">A character deeper in the tree gets a longer code: its code has one bit per level.</p>
+          <p class="note">A character higher in the tree gets a longer code: its code has one bit per level.</p>
         </div>
       </section>
 

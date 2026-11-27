@@ -1,16 +1,11 @@
 /*
- * Shared base style for the small projects: the site's look, "Editorial". Identical in huffman,
- * quantum-key-exchange and fog-scheduling. Page-specific rules go in a separate file.
- *
- * Every colour, size, space, font and rule here is one of the site's tokens, from
- * c-editorial-tokens.css (copied unchanged from the website; the fonts it names and their
- * licences are in fonts/). The names on the left are this project's own, kept so the page files
- * and scripts need not change.
+ * Shared base style for the small projects. The tokens (colours, sizes, spaces, fonts, rules)
+ * come from the shared shell, varun-ui/shell/shell.css, linked before this file. The names on the
+ * left are this project's own, kept so the page files and scripts need not change.
  */
-@import url("./c-editorial-tokens.css");
 
 :root {
-  /* Page and ink; dark comes from the system scheme through the tokens. */
+  /* Page and ink, from the shell's tokens. */
   --bg: var(--site-color-bg);
   --surface: var(--site-color-bg);
   --ink: var(--site-color-fg);

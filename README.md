@@ -211,7 +211,8 @@ WebAssembly (`wasm/`, a plain C interface, no wasm-bindgen). The built
 `web/huffman.wasm` is committed, so serving the folder is enough:
 
 ```
-python3 -m http.server 8000 --bind 127.0.0.1 -d web
+make dev     # serves web/ at http://127.0.0.1:8000
+make build   # rebuilds the library and web/huffman.wasm
 ```
 
 To rebuild the module after changing the library:
@@ -223,18 +224,21 @@ cp target/wasm32-unknown-unknown/release/huffman_wasm.wasm web/huffman.wasm
 
 ### The look
 
-The page uses the owner's site look, "Editorial". `web/c-editorial-tokens.css`
-is copied unchanged from the website, and `web/base.css` (the same file in
-huffman, quantum-key-exchange and fog-scheduling) maps the page's own
-variables onto it: page and ink in light and dark (following the system), the
-oxblood accent for links and focus only, Newsreader for text and the tree's
-labels, IBM Plex Mono for code, CM Web Serif for mathematics, the site's
-sizes (17, 20, 22 and 28 px, and the title), spacing, measure, rules and focus
-ring. The token file asks for its fonts at `/fonts/`, so serve `web/` as the
-site root (as above) or from the website. The Pages workflow
-rewrites them to `fonts/` in the copy it publishes. The fonts and their licences
-(`Newsreader-OFL.txt`, `IBM-Plex-OFL.txt`, `GUST-FONT-LICENSE.txt`,
-`LPPL-1.3c.txt`, `NewCM-License.txt`) are in `web/fonts/`.
+The page links the shared shell from varun-ui
+(`https://varunswaika.github.io/varun-ui/shell/shell.css` and `shell.js`): the
+site's tokens, fonts, a small bar on top with an About panel, and a one-line
+footer. With `?embed` in the address, or inside a frame, the bar is left out.
+`web/base.css` (the same file in huffman, quantum-key-exchange and
+fog-scheduling) maps the page's own variables onto the shell's tokens.
+
+The tree is drawn as a small pixel tree with `pixel.js` from the same shell,
+imported by URL. The root is the trunk on the ground, joins are wooden knots
+on the branches, and characters are leaves at the top, so a character's code
+length is how many levels up from the trunk it sits. Each branch is as thick as
+the share of the text it carries. One art pixel is 3 CSS pixels, and the
+characters and counts are page text over the canvas, at 17 px in the text face.
+A tree wider than the panel scrolls sideways rather than shrinking its labels.
+Nothing animates: each step draws once.
 
 Sections are set off by space and a rule, with no boxes, fills or shadows.
 Play is the only filled control. Meaning colours, the same in all six tools:
@@ -258,10 +262,8 @@ the monospace.
 ## Test
 
 ```
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-npx @biomejs/biome@2.6.7 check
+make check   # cargo build and cargo test
+make lint    # cargo fmt, clippy and Biome
 ```
 
 A few unit tests sit next to the modules in `src/`; `tests/roundtrip.rs`
